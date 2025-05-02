@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "392773297862",
+    "project_id": "coffee-manager-eb85d",
+    "storage_bucket": "coffee-manager-eb85d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:392773297862:android:82c750293862c52c62d9c7",
+        "android_client_info": {
+          "package_name": "com.example.coffee_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh8xJnOf5o3BqG_fedJqjiSdF5PhC36qM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
