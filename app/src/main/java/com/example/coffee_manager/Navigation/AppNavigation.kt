@@ -6,11 +6,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.coffee_manager.View.*
-import com.example.coffee_manager.View.Admin.HomeAdminScreen
-import com.example.coffee_manager.View.Admin.UserListScreen
-import com.example.coffee_manager.View.Bep.HomeBepScreen
-import com.example.coffee_manager.View.Oder.HomeOrderScreen
-import com.example.coffee_manager.View.ThuNgan.HomeThuNganScreen
+import com.example.coffee_manager.View.Manager.AddFoodScreen
+import com.example.coffee_manager.View.Manager.HomeAdminScreen
+import com.example.coffee_manager.View.Manager.RegisterScreen
+import com.example.coffee_manager.View.Manager.UserListScreen
+import com.example.coffee_manager.View.Chef.HomeBepScreen
+import com.example.coffee_manager.View.Order.OrderScreen
+import com.example.coffee_manager.View.Cashier.HomeThuNganScreen
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
@@ -20,11 +22,13 @@ fun AppNavigation(navController: NavHostController) {
 
         // Các màn hình Home theo từng vai trò
         composable("home_admin") { HomeAdminScreen(navController) }
-        composable("home_order") { HomeOrderScreen(navController) }
+        composable("home_order") { OrderScreen(navController) }
         composable("home_thungan") { HomeThuNganScreen(navController) }
         composable("home_bep") { HomeBepScreen(navController) }
         composable("user_list") { UserListScreen(navController) }
 
-        // Thêm các màn hình khác ở đây nếu có
+        // Admin
+        composable("add_food") { AddFoodScreen(navController) }
+
     }
 }

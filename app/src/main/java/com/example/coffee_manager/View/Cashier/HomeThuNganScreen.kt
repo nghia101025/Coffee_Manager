@@ -1,10 +1,10 @@
-package com.example.coffee_manager.View.Oder
+package com.example.coffee_manager.View.Cashier
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 
 @Composable
-fun HomeOrderScreen(navController: NavHostController) {
-    Text("Trang chủ Order")
+fun HomeThuNganScreen(navController: NavHostController) {
+    Text("Trang chủ Thu Ngân")
 }
