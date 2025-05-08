@@ -1,9 +1,11 @@
 package com.example.coffee_manager.Model
 
 data class Table(
+    val idTable: String = "",
+    val number: Int = 0,
+    val status: Status = Status.EMPTY,
+    val billId: String? = null
+    ) {
+        enum class Status { EMPTY, OCCUPIED, DAMAGED }
+    }
 
-    val IdTable: Int = 0,
-    val seatCount: Int,             // số lượng khách ngồi
-    val isAvailable: Boolean,       // còn trống hay không
-    val note: String
-)

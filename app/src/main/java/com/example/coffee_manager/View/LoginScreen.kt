@@ -1,11 +1,12 @@
 package com.example.coffee_manager.View
 
-import android.widget.Toast
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,23 +15,33 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import com.example.coffee_manager.R
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import com.example.coffee_manager.R
 import com.example.coffee_manager.Controller.LoginController
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+
+private const val PREFS_NAME = "login_prefs"
+private const val KEY_EMAIL = "key_email"
+private const val KEY_PASSWORD = "key_password"
+private const val KEY_REMEMBER = "key_remember"
 
 @Composable
 fun LoginScreen(navController: NavController) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    // Load saved prefs once
+    var email by remember { mutableStateOf(prefs.getString(KEY_EMAIL, "") ?: "") }
+    var password by remember { mutableStateOf(prefs.getString(KEY_PASSWORD, "") ?: "") }
+    var rememberPassword by remember { mutableStateOf(prefs.getBoolean(KEY_REMEMBER, false)) }
     var message by remember { mutableStateOf("") }
-    val controller = LoginController()
+    var showDialog by remember { mutableStateOf(false) }
+    val controller = remember { LoginController() }
 
     Box(
         modifier = Modifier
@@ -41,7 +52,14 @@ fun LoginScreen(navController: NavController) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo (bạn có thể thay bằng Image nếu có)
+            // Thông báo popup
+            PopupMessage(
+                show = showDialog,
+                message = message,
+                onDismiss = { showDialog = false }
+            )
+
+            // Logo
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Logo",
@@ -53,7 +71,7 @@ fun LoginScreen(navController: NavController) {
             Text(
                 text = "PinkDragon Coffee",
                 fontSize = 32.sp,
-                color = Color(0xFFB8860B), // vàng đậm, sang trọng
+                color = Color(0xFFB8860B),
                 style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontStyle = FontStyle.Italic,
@@ -62,37 +80,67 @@ fun LoginScreen(navController: NavController) {
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-
-            // Username input
+            // Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 placeholder = { Text("Email") },
+                singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                singleLine = true
+                    .padding(vertical = 8.dp)
             )
 
-            // Password input
+            // Password
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                placeholder = { Text("Password") },
+                placeholder = { Text("Mật khẩu") },
                 visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                singleLine = true
+                    .padding(vertical = 8.dp)
             )
 
-            // Sign in button
+            // Checkbox ghi nhớ mật khẩu
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Checkbox(
+                    checked = rememberPassword,
+                    onCheckedChange = { rememberPassword = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF2196F3)
+                    )
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Ghi nhớ mật khẩu")
+            }
+
+            // Đăng nhập button
             Button(
                 onClick = {
                     controller.loginUser(
                         email = email,
                         password = password,
                         onSuccess = { role ->
+                            // Lưu prefs nếu chọn ghi nhớ
+                            with(prefs.edit()) {
+                                putBoolean(KEY_REMEMBER, rememberPassword)
+                                if (rememberPassword) {
+                                    putString(KEY_EMAIL, email)
+                                    putString(KEY_PASSWORD, password)
+                                } else {
+                                    remove(KEY_EMAIL)
+                                    remove(KEY_PASSWORD)
+                                }
+                                apply()
+                            }
+                            // Điều hướng theo role
                             when (role) {
                                 "Admin" -> navController.navigate("home_admin")
                                 "Order" -> navController.navigate("home_order")
@@ -103,6 +151,7 @@ fun LoginScreen(navController: NavController) {
                         },
                         onFailure = { msg ->
                             message = msg
+                            showDialog = true
                         }
                     )
                 },
@@ -111,9 +160,8 @@ fun LoginScreen(navController: NavController) {
                     .padding(vertical = 16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
             ) {
-                Text("SIGN IN", color = Color.White)
+                Text("Đăng nhập", color = Color.White)
             }
         }
     }
 }
-
