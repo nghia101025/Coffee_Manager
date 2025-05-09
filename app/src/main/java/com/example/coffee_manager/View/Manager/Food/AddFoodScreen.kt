@@ -226,18 +226,20 @@ fun AddFoodScreen(navController: NavController) {
                     if (!valid) return@Button
 
                     // Build model & send
-                    val food = Food(
-                        idFood = "",
-                        name = name,
-                        recipe = recipe,
-                        price = rawPrice.toLong(),
-                        isAvailable = true,
-                        imageUrl = imageBitmap!!.toBase64(),
-                        category = selectedCat.toString(),
-                        soldCount = 0L
-                    )
+                    val food = selectedCat?.let {
+                        Food(
+                            idFood = "",
+                            name = name,
+                            recipe = recipe,
+                            price = rawPrice.toLong(),
+                            isAvailable = true,
+                            imageUrl = imageBitmap!!.toBase64(),
+                            category = it.name,
+                            soldCount = 0L
+                        )
+                    }
                     scope.launch(Dispatchers.IO) {
-                        controller.addFood(food)
+                        controller.addFood(food!!)
                             .onSuccess {
                                 message = "Thêm món thành công"
                                 showDialog = true

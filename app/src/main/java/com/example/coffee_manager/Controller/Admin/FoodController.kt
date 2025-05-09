@@ -42,7 +42,7 @@ class FoodController {
                     val id = doc.id
                     val name = doc.getString("name") ?: ""
                     val recipe = doc.getString("recipe") ?: ""
-                    val price = doc.getString("price") ?: "0.0"
+                    val price = doc.getLong("price") ?: 0L
                     val avail = doc.getBoolean("isAvailable") ?: true
                     val url = doc.getString("imageUrl") ?: ""
                     val category = doc.getString("category") ?: ""
@@ -51,7 +51,7 @@ class FoodController {
                         idFood = id,
                         name = name,
                         recipe = recipe,
-                        price = price.toLong(),
+                        price = price,
                         isAvailable = avail,
                         imageUrl = url,
                         category = category
