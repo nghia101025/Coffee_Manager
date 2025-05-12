@@ -1,20 +1,23 @@
+// View/Manager/Employee/UpdateEmployeeScreen.kt
 package com.example.coffee_manager.View.Manager.Employee
 
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Patterns
+import androidx.annotation.RequiresApi
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material3.ButtonDefaults.buttonColors
 import androidx.compose.runtime.*
@@ -24,299 +27,278 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.NavBackStackEntry
 import com.example.coffee_manager.Controller.Admin.EmployeeController
 import com.example.coffee_manager.Controller.base64ToBitmap
 import com.example.coffee_manager.Controller.toBase64
 import com.example.coffee_manager.Model.User
 import com.example.coffee_manager.View.CommonTopBar
 import com.example.coffee_manager.View.PopupMessage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
+import java.time.Period
 
-@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun UpdateEmployeeScreen(
     navController: NavController,
-    backStackEntry: NavBackStackEntry
+    userId: String
 ) {
-    // Lấy idUser từ args
-    val userIdArg = backStackEntry.arguments?.getString("idUser")
-    Log.d("UpdateEmployeeScreen", "userIdArg: $userIdArg")
+    val TAG = "UpdateEmployeeScreen"
+    val context = LocalContext.current
+    val controller = remember { EmployeeController() }
+    val scope = rememberCoroutineScope()
+    val scroll = rememberScrollState()
 
-
-    val employeeController = remember { EmployeeController() }
-    var id by remember { mutableStateOf<User?>(null) }
+    // state loading + dialog
     var isLoading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
 
-    // Form state và lỗi
+    // form fields
     var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
     var password by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf<String?>(null) }
-    var age by remember { mutableStateOf("") }
-    var ageError by remember { mutableStateOf<String?>(null) }
+    var dob by remember { mutableStateOf<LocalDate?>(null) }
+    var dobError by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.getDefault())
     var phone by remember { mutableStateOf("") }
     var phoneError by remember { mutableStateOf<String?>(null) }
     var role by remember { mutableStateOf("") }
-    var roleError by remember { mutableStateOf<String?>(null)}
-    var imageError by remember { mutableStateOf<String?>(null) }
+    var roleError by remember { mutableStateOf<String?>(null) }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var imageBase64 by remember { mutableStateOf("") }
+    var imageError by remember { mutableStateOf<String?>(null) }
 
-    val scrollState = rememberScrollState()
 
-    // Load dữ liệu user
-    LaunchedEffect(userIdArg) {
-        employeeController.getEmployeeById(userIdArg.toString())
+    // load user once
+    LaunchedEffect(userId) {
+        controller.getEmployeeById(userId)
             .onSuccess { u ->
                 email = u.email
-                password = u.password
                 name = u.name
-                age = u.age.toString()
+                dob = u.dateOfBirth
                 phone = u.phone
                 role = u.role
                 imageBase64 = u.imageUrl
             }
             .onFailure {
-                message = "Không tải được thông tin nhân viên: ${it.message}"
+                message = "Không tải được nhân viên: ${it.message}"
                 showDialog = true
             }
         isLoading = false
     }
 
-    // Image picker
-    val pickImage = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    // image picker
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             imageUri = it
-            val bmp: Bitmap =
-                MediaStore.Images.Media.getBitmap(navController.context.contentResolver, it)
-            imageBase64 = bmp.toBase64()
+            try {
+                val bmp = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                imageBase64 = bmp.toBase64()
+            } catch (e: Exception) {
+                imageError = "Lỗi đọc ảnh"
+            }
         }
     }
 
-    Scaffold(
-        topBar = { CommonTopBar(navController, title = "Chỉnh sửa nhân viên") }
-    ) { padding ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.Center
-        ) {
+    Scaffold(topBar = { CommonTopBar(navController, "Cập nhật nhân viên") }) { pad ->
+        Box(Modifier.fillMaxSize().padding(pad)) {
             if (isLoading) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
             } else {
                 Column(
-                    modifier = Modifier
+                    Modifier
                         .fillMaxSize()
-                        .verticalScroll(scrollState)
+                        .verticalScroll(scroll)
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    PopupMessage(showDialog, message, onDismiss = { showDialog = false })
-                    Spacer(Modifier.height(16.dp))
+                    PopupMessage(showDialog, message) { showDialog = false }
 
-
-                    // EMAIL
-                    TextField(
+                    // Email
+                    OutlinedTextField(
                         value = email,
                         onValueChange = { email = it; emailError = null },
                         label = { Text("Email") },
                         isError = emailError != null,
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Spacer(Modifier.height(8.dp))
 
-                    // PASSWORD
-                    TextField(
-                        value = password,
-                        onValueChange = { password = it; passwordError = null },
-                        label = { Text("Mật khẩu") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        isError = passwordError != null,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    Spacer(Modifier.height(8.dp))
-
-                    // NAME
-                    TextField(
+                    // Name
+                    OutlinedTextField(
                         value = name,
                         onValueChange = { name = it; nameError = null },
-                        label = { Text("Tên") },
+                        label = { Text("Họ và tên") },
                         isError = nameError != null,
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     nameError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Spacer(Modifier.height(8.dp))
 
-                    // AGE
-                    TextField(
-                        value = age,
-                        onValueChange = { age = it; ageError = null },
-                        label = { Text("Tuổi") },
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done,
-                            keyboardType = KeyboardType.Number
-                        ),
-                        isError = ageError != null,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    ageError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    Spacer(Modifier.height(8.dp))
-
-                    // PHONE
-                    TextField(
+                    // Phone
+                    OutlinedTextField(
                         value = phone,
                         onValueChange = { phone = it; phoneError = null },
                         label = { Text("Số điện thoại") },
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done,
-                            keyboardType = KeyboardType.Number
-                        ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = phoneError != null,
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     phoneError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Spacer(Modifier.height(8.dp))
 
-                    // ROLE
-                    ExposedDropdownMenuBox(expanded = false, onExpandedChange = {}) {}
-                    RoleDropdownEmployee(
-                        selectedRole = role,
-                        onRoleSelected = { role = it; roleError = null }
-                    )
+                    // Role
+                    RoleDropdownEmployee(selectedRole = role, onRoleSelected = { role = it; roleError = null })
                     roleError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Spacer(Modifier.height(8.dp))
 
-                    // IMAGE PICKER
-                    // HIỂN THỊ ẢNH NHÂN VIÊN
-                    val bitmap = remember(imageBase64) {
-                        base64ToBitmap(imageBase64)
-                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(text = "Ngày sinh:", style = MaterialTheme.typography.titleMedium)
+
+                    DatePickerExample(
+                        initialDate = dob,
+                        onDateSelected = { selectedDate ->
+                            dob = selectedDate
+                            dobError = null
+                        }
+                    )
 
                     Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = dob?.format(dateFormatter) ?: "Chưa chọn",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (dobError != null) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                    dobError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Spacer(Modifier.height(8.dp))
 
-                    if (imageUri != null) {
-                        val bmp: Bitmap = MediaStore.Images.Media.getBitmap(
-                            navController.context.contentResolver,
-                            imageUri
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                                .background(Color.LightGray)
-                        ) {
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Ảnh đã chọn",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    } else {
-                        bitmap?.let {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 200.dp)
-                                    .background(Color.LightGray)
-                            ) {
-                                Image(
-                                    bitmap = it.asImageBitmap(),
-                                    contentDescription = "Ảnh từ hệ thống",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
+                    // Avatar
+                    val bmpFromBase64 = remember(imageBase64) { base64ToBitmap(imageBase64) }
+                    Box(
+                        Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        when {
+                            imageUri != null -> {
+                                val bmp = MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri!!)
+                                Image(bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            }
+                            bmpFromBase64 != null -> {
+                                Image(bmpFromBase64.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            }
+                            else -> {
+                                Text(text = "No Image", color = Color.Gray)
                             }
                         }
                     }
-                    Spacer(Modifier.height(15.dp))
-
-                    Button(
-                        onClick = { pickImage.launch("image/*") },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = { pickImage.launch("image/*") }, Modifier.fillMaxWidth()) {
                         Text("Chọn ảnh")
                     }
+                    imageError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Spacer(Modifier.height(16.dp))
 
+                    // Submit
                     Button(
                         onClick = {
                             var valid = true
-                            if (imageBase64.isBlank()) {
-                                imageError = "Vui lòng chọn ảnh"
-                                showDialog = true
-                                valid = false
+                            if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                                emailError = "Email không hợp lệ"; valid = false
                             }
-                            if (email.isBlank()) {
-                                emailError = "Email không được bỏ trống";showDialog = true; valid = false
-                            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                                emailError = "Email không hợp lệ";showDialog = true; valid = false
-                            }
-                            if (password.length < 8) {
-                                passwordError = "Mật khẩu tối thiểu 8 ký tự";showDialog = true; valid = false
+                            if (password.isNotBlank() && password.length < 8) {
+                                passwordError = "Mật khẩu tối thiểu 8 ký tự"; valid = false
                             }
                             if (name.isBlank()) {
-                                nameError = "Tên không được bỏ trống";showDialog = true; valid = false
+                                nameError = "Tên không được để trống"; valid = false
                             }
-                            val ageInt = age.toIntOrNull()
-                            if (ageInt == null || ageInt <= 0) {
-                                ageError = "Tuổi không hợp lệ";showDialog = true; valid = false
+                            val age = dob?.let { Period.between(it, LocalDate.now()).years } ?: -1
+                            if (age !in 18..65) {
+                                dobError = "Tuổi phải từ 18 đến 65"; valid = false
                             }
-                            if (!phone.matches(Regex("^0\\d{9}\$"))) {
-                                phoneError = "SĐT phải bắt đầu 0 và đủ 10 số";showDialog = true ;valid = false
+                            if (!phone.matches(Regex("^0\\d{9}$"))) {
+                                phoneError = "SĐT phải bắt đầu 0 và đủ 10 số"; valid = false
                             }
                             if (role.isBlank()) {
-                                roleError = "Chọn chức vụ";showDialog = true; valid = false
+                                roleError = "Chọn chức vụ"; valid = false
                             }
-                            if (!valid) return@Button
-                            val update = User(
-                                idUser = userIdArg.toString(),
-                                email = email,
-                                password = password,
-                                name = name,
-                                age = age.toInt(),
-                                phone = phone,
-                                role = role,
-                                imageUrl = imageBase64
-                            )
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val exists = employeeController.isEmailRegistered(email)
-                                if (exists) {
-                                    message = "Email đã được sử dụng."
-                                    showDialog = true
-                                } else
-                                    employeeController.updateEmployee(update)
-                                        .onSuccess {
-                                            message = "Cập nhật thành công"
-                                            showDialog = true
-                                        }
-                                        .onFailure {
-                                            message = "Lỗi: ${it.message}"
-                                            showDialog = true
-                                        }
+                            if (imageBase64.isBlank()) {
+                                imageError = "Chọn ảnh"; valid = false
+                            }
+                            if (!valid) {
+                                message = "Vui lòng sửa các trường bị lỗi"
+                                showDialog = true
+                                return@Button
+                            }
+                            scope.launch {
+                                // update email if changed
+                                val current = controller.getCurrentAuthUser()
+                                if (current?.email != email) {
+                                    try {
+                                        current?.updateEmail(email)?.await()
+                                    } catch (e: Exception) {
+                                        emailError = if (e.message?.contains("already in use") == true)
+                                            "Email đã được sử dụng" else "Lỗi cập nhật email"
+                                        message = emailError!!
+                                        showDialog = true
+                                        return@launch
+                                    }
+                                }
+                                // build user
+                                val updated = User(
+                                    idUser = userId,
+                                    email = email,
+                                    password = if (password.isBlank()) "" else password,
+                                    name = name,
+                                    dateOfBirth = dob,
+                                    phone = phone,
+                                    role = role,
+                                    imageUrl = imageBase64
+                                )
+                                // firestore update
+                                val res = withContext(Dispatchers.IO) { controller.updateEmployee(updated) }
+                                withContext(Dispatchers.Main) {
+                                    res.onSuccess {
+                                        message = "Cập nhật thành công"
+                                        showDialog = true
+                                    }.onFailure {
+                                        message = "Lỗi: ${it.message}"
+                                        showDialog = true
+                                    }
+                                }
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = buttonColors(containerColor = Color(0xFF2196F3))
                     ) {
                         Text("Xác nhận", color = Color.White)
@@ -334,12 +316,24 @@ fun UpdateEmployeeScreen(
 fun RoleDropdownEmployee(selectedRole: String, onRoleSelected: (String) -> Unit) {
     val roles = listOf("Quản lý", "Đầu bếp", "Phục vụ", "Thu Ngân")
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded=expanded,onExpandedChange={ expanded=!expanded }) {
-        TextField(value=selectedRole,onValueChange={},readOnly=true,label={Text("Chức vụ")},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(expanded=expanded)},modifier=Modifier.fillMaxWidth().menuAnchor())
-        ExposedDropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
-            roles.forEach{r->
-                DropdownMenuItem(text={Text(r)},onClick={onRoleSelected(r);expanded=false})
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+        OutlinedTextField(
+            value = selectedRole,
+            onValueChange = {},
+            label = { Text("Chức vụ") },
+            readOnly = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            roles.forEach { r ->
+                DropdownMenuItem(text = { Text(r) }, onClick = {
+                    onRoleSelected(r)
+                    expanded = false
+                })
             }
         }
     }
 }
+
+

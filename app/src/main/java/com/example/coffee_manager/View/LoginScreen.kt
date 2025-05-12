@@ -1,7 +1,8 @@
+
 package com.example.coffee_manager.View
 
 import android.content.Context
-import android.content.SharedPreferences
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -11,90 +12,129 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import com.example.coffee_manager.R
+import kotlinx.coroutines.launch
 import com.example.coffee_manager.Controller.LoginController
+import com.example.coffee_manager.R
 
-private const val PREFS_NAME = "login_prefs"
-private const val KEY_EMAIL = "key_email"
+private const val PREFS_NAME   = "login_prefs"
+private const val KEY_EMAIL    = "key_email"
 private const val KEY_PASSWORD = "key_password"
 private const val KEY_REMEMBER = "key_remember"
+private const val TAG = "LoginScreen"
 
 @Composable
 fun LoginScreen(navController: NavController) {
     val context = LocalContext.current
-    val prefs = remember {
+    val prefs   = remember {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
+    var email        by remember { mutableStateOf(prefs.getString(KEY_EMAIL, "") ?: "") }
+    var password     by remember { mutableStateOf(prefs.getString(KEY_PASSWORD, "") ?: "") }
+    var rememberPass by remember { mutableStateOf(prefs.getBoolean(KEY_REMEMBER, false)) }
+    var message      by remember { mutableStateOf("") }
+    var showDialog   by remember { mutableStateOf(false) }
+    var loginRole    by remember { mutableStateOf<String?>(null) }
+    val controller   = remember { LoginController() }
 
-    // Load saved prefs once
-    var email by remember { mutableStateOf(prefs.getString(KEY_EMAIL, "") ?: "") }
-    var password by remember { mutableStateOf(prefs.getString(KEY_PASSWORD, "") ?: "") }
-    var rememberPassword by remember { mutableStateOf(prefs.getBoolean(KEY_REMEMBER, false)) }
-    var message by remember { mutableStateOf("") }
-    var showDialog by remember { mutableStateOf(false) }
-    val controller = remember { LoginController() }
+    // Observe role change to navigate
+    LaunchedEffect(loginRole) {
+        loginRole?.let { role ->
+            Log.d(TAG, "Navigating to home for role: $role")
+            // Save prefs if needed
+            prefs.edit().apply {
+                putBoolean(KEY_REMEMBER, rememberPass)
+                if (rememberPass) {
+                    putString(KEY_EMAIL, email)
+                    putString(KEY_PASSWORD, password)
+                } else {
+                    remove(KEY_EMAIL)
+                    remove(KEY_PASSWORD)
+                }
+                apply()
+            }
+            try {
+                when (role.trim().lowercase()) {
+                    "quản lý"     -> navController.navigate("home_admin")
+                    "order"     -> navController.navigate("home_order")
+                    "thu ngân"  -> navController.navigate("home_thungan")
+                    "đầu bếp"   -> navController.navigate("home_bep")
+                    else        -> {
+                        Log.w(TAG, "Unknown role received: $role")
+                        navController.navigate("login") // fallback
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Navigation error", e)
+                showDialog = true
+                message = "Lỗi điều hướng: ${e.localizedMessage}"
+            }
+            loginRole = null
+        }
+    }
 
     Box(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Thông báo popup
-            PopupMessage(
-                show = showDialog,
-                message = message,
-                onDismiss = { showDialog = false }
-            )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (showDialog) {
+                PopupMessage(
+                    show = true,
+                    message = message,
+                    onDismiss = {
+                        Log.d(TAG, "Popup dismissed")
+                        showDialog = false
+                    }
+                )
+            }
 
-            // Logo
+            // Logo and title
             Image(
-                painter = painterResource(id = R.drawable.logo),
+                painter = painterResource(R.drawable.logo),
                 contentDescription = "Logo",
                 modifier = Modifier
                     .size(100.dp)
                     .padding(bottom = 16.dp)
             )
-
             Text(
                 text = "PinkDragon Coffee",
                 fontSize = 32.sp,
                 color = Color(0xFFB8860B),
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Italic,
-                    letterSpacing = 2.sp
-                ),
+                fontWeight = FontWeight.Bold,
+                fontStyle = FontStyle.Italic,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Email
+            // Email field
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    Log.d(TAG, "Email input: $email")
+                },
                 placeholder = { Text("Email") },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             )
-
-            // Password
+            // Password field
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    Log.d(TAG, "Password input length: ${it.length}")
+                },
                 placeholder = { Text("Mật khẩu") },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
@@ -102,8 +142,7 @@ fun LoginScreen(navController: NavController) {
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             )
-
-            // Checkbox ghi nhớ mật khẩu
+            // Remember me
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -111,45 +150,30 @@ fun LoginScreen(navController: NavController) {
                     .padding(vertical = 8.dp)
             ) {
                 Checkbox(
-                    checked = rememberPassword,
-                    onCheckedChange = { rememberPassword = it },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFF2196F3)
-                    )
+                    checked = rememberPass,
+                    onCheckedChange = {
+                        rememberPass = it
+                        Log.d(TAG, "Remember password toggled: $rememberPass")
+                    },
+                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF2196F3))
                 )
                 Spacer(Modifier.width(8.dp))
                 Text("Ghi nhớ mật khẩu")
             }
-
-            // Đăng nhập button
+            // Login button
             Button(
                 onClick = {
+                    Log.d(TAG, "Login button clicked with email=$email")
                     controller.loginUser(
-                        email = email,
+                        email = email.trim(),
                         password = password,
-                        onSuccess = { role ->
-                            // Lưu prefs nếu chọn ghi nhớ
-                            with(prefs.edit()) {
-                                putBoolean(KEY_REMEMBER, rememberPassword)
-                                if (rememberPassword) {
-                                    putString(KEY_EMAIL, email)
-                                    putString(KEY_PASSWORD, password)
-                                } else {
-                                    remove(KEY_EMAIL)
-                                    remove(KEY_PASSWORD)
-                                }
-                                apply()
-                            }
-                            // Điều hướng theo role
-                            when (role) {
-                                "Admin" -> navController.navigate("home_admin")
-                                "Order" -> navController.navigate("home_order")
-                                "Thu ngân" -> navController.navigate("home_thungan")
-                                "Đầu bếp" -> navController.navigate("home_bep")
-                                else -> navController.navigate("home_order")
-                            }
+                        onSuccess = { rawRole ->
+                            val role = rawRole.trim().lowercase()
+                            Log.d(TAG, "Login success, role=$role")
+                            loginRole = role
                         },
                         onFailure = { msg ->
+                            Log.e(TAG, "Login failed: $msg")
                             message = msg
                             showDialog = true
                         }

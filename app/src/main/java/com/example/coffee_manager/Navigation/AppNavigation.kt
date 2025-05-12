@@ -1,6 +1,8 @@
 package com.example.coffee_manager.Navigation
 
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -18,11 +20,11 @@ import com.example.coffee_manager.View.Cashier.HomeThuNganScreen
 import com.example.coffee_manager.View.Manager.Employee.UpdateEmployeeScreen
 import com.example.coffee_manager.View.Manager.Food.CategoryListScreen
 import com.example.coffee_manager.View.Manager.Food.FoodListScreen
-import com.example.coffee_manager.View.Manager.Food.ListCategory
 import com.example.coffee_manager.View.Manager.Food.UpdateFoodScreen
 import com.example.coffee_manager.View.Manager.Space.TableManagementScreen
 import com.example.coffee_manager.View.Manager.Table.TableDetailScreen
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigation(navController: NavHostController) {
     NavHost(navController = navController, startDestination = "login") {
@@ -48,8 +50,11 @@ fun AppNavigation(navController: NavHostController) {
             route = "update_employee/{idUser}",
             arguments = listOf(navArgument("idUser") { type = NavType.StringType })
         ) { backStackEntry ->
-            UpdateEmployeeScreen(navController, backStackEntry)
+            // Lấy idUser từ arguments
+            val idUser = backStackEntry.arguments?.getString("idUser") ?: ""
+            UpdateEmployeeScreen(navController, idUser)
         }
+
         composable(
             route = "update_food/{idFood}",
             arguments = listOf(navArgument("idFood") { type = NavType.StringType })

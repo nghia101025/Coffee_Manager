@@ -1,6 +1,7 @@
 package com.example.coffee_manager.Controller.Admin
 
 import com.example.coffee_manager.Model.Category
+import com.example.coffee_manager.utils.MaterialIconMap
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -9,15 +10,17 @@ class CategoryController {
     private val categories = db.collection("categories")
 
     /**
-     * Lấy danh sách tất cả tên danh mục (String).
+     * Lấy danh sách tất cả danh mục, bao gồm cả iconName.
      */
     suspend fun getAllCategories(): Result<List<Category>> {
         return try {
             val snapshot = categories.get().await()
             val result = snapshot.documents.mapNotNull { doc ->
-                val name = doc.getString("name")
-                val id = doc.id
-                if (name != null) Category(idCat = id, name = name) else null
+                val id       = doc.id
+                val name     = doc.getString("name")
+                val iconName = doc.getString("iconName") ?: MaterialIconMap.names.first()
+                if (name != null) Category(idCat = id, name = name, iconName = iconName)
+                else null
             }
             Result.success(result)
         } catch (e: Exception) {
@@ -25,39 +28,40 @@ class CategoryController {
         }
     }
 
-
-
-
     /**
-     * Thêm danh mục mới nếu chưa tồn tại.
+     * Thêm danh mục mới kèm iconName.
      */
-    suspend fun addCategory(name: String): Result<String> {
+    suspend fun addCategory(name: String, iconName: String): Result<String> {
         return try {
+            // Kiểm tra trùng tên
             val check = categories.whereEqualTo("name", name).get().await()
-            if (!check.isEmpty) return Result.failure(Exception("Danh mục đã tồn tại"))
+            if (!check.isEmpty) {
+                return Result.failure(Exception("Danh mục đã tồn tại"))
+            }
 
+            // Tạo document mới với cả iconName
             val newDoc = categories.document()
-            val data = hashMapOf("id" to newDoc.id, "name" to name)
+            val data = hashMapOf(
+                "id"       to newDoc.id,
+                "name"     to name,
+                "iconName" to iconName
+            )
             newDoc.set(data).await()
             Result.success(newDoc.id)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
+    /**
+     * Xóa danh mục theo id.
+     */
     suspend fun deleteCategory(id: String): Result<Unit> {
         return try {
-            categories
-                .document(id)
-                .delete()
-                .await()
+            categories.document(id).delete().await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
-
-
 }
-
-
-

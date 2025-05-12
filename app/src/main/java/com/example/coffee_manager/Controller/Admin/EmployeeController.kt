@@ -1,143 +1,185 @@
 package com.example.coffee_manager.Controller.Admin
 
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
 import com.example.coffee_manager.Model.User
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
+import java.time.ZoneId
 
 class EmployeeController {
+    companion object {
+        private const val TAG = "EmployeeController"
+    }
+
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
+
+    /** Trả về FirebaseUser hiện tại (hoặc null nếu chưa đăng nhập) */
+    fun getCurrentAuthUser(): FirebaseUser? = auth.currentUser
+
     /**
      * Lấy danh sách tất cả nhân viên.
      */
-    suspend fun getAllEmployee(): Result<List<User>> {
-        return try {
-            val snap = usersCollection.get().await()
-            val docRef = usersCollection.document()
-            val list = snap.documents.mapNotNull { doc ->
-                runCatching {
-                    // Bắt đúng tên field và kiểu
-                    val id = doc.getString("idUser") ?: ""
-                    val email  = doc.getString("email") ?: ""
-                    val name   = doc.getString("name") ?: ""
-                    val role   = doc.getString("role") ?: ""
-                    val age    = doc.getLong("age")?.toInt() ?: 0
-                    val phone  = doc.getString("phone") ?: ""
-                    User(
-                        idUser = id,
-                        email  = email,
-                        password = "",   // không lấy password
-                        name   = name,
-                        age    = age,
-                        phone  = phone,
-                        role   = role
-                    )
-                }.getOrNull()
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun getAllEmployees(): Result<List<User>> = runCatching {
+        val snap = usersCollection.get().await()
+        snap.documents.mapNotNull { doc ->
+            try {
+                val uid   = doc.id
+                val data  = doc.data ?: return@mapNotNull null
+                val email = data["email"]    as? String ?: return@mapNotNull null
+                val name  = data["name"]     as? String ?: ""
+                val role  = data["role"]     as? String ?: ""
+                val phone = data["phone"]    as? String ?: ""
+                val image = data["imageUrl"] as? String ?: ""
+
+                // Xử lý dateOfBirth
+                val rawDob = data["dateOfBirth"]
+                val dob: LocalDate? = parseDob(rawDob)
+
+                User(
+                    idUser      = uid,
+                    email       = email,
+                    password    = "",
+                    name        = name,
+                    dateOfBirth = dob,
+                    phone       = phone,
+                    role        = role,
+                    imageUrl    = image
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing employee document ${doc.id}", e)
+                null
             }
-            Result.success(list)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun getEmployeeById(idUser: String): Result<User> {
-        return try {
-            val snapshot = usersCollection
-                .whereEqualTo("idUser", idUser)
-                .get()
-                .await()
-            val doc = snapshot.documents.firstOrNull()
-                ?: return Result.failure(Exception("Không tìm thấy nhân viên với id $idUser"))
-            val user = doc.toObject(User::class.java)
-                ?: return Result.failure(Exception("Lỗi chuyển đổi dữ liệu"))
-            Result.success(user)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
+        }.let { Result.success(it) }
+    }.getOrElse { Result.failure(it) }
 
     /**
-     * Kiểm tra xem email đã được đăng ký trong Firebase Auth chưa.
+     * Lấy một nhân viên theo idUser.
      */
-    suspend fun isEmailRegistered(email: String): Boolean {
-        return try {
-            val methods = auth.fetchSignInMethodsForEmail(email).await().signInMethods
-            !methods.isNullOrEmpty()
-        } catch (e: FirebaseAuthException) {
-            false
-        }
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun getEmployeeById(idUser: String): Result<User> = runCatching {
+        Log.d(TAG, "Fetching user by idUser: $idUser")
+        val snapshot = usersCollection.document(idUser).get().await()
+        if (!snapshot.exists()) throw Exception("Không tìm thấy nhân viên với id $idUser")
+
+        val email = snapshot.getString("email") ?: ""
+        val name  = snapshot.getString("name") ?: ""
+        val role  = snapshot.getString("role") ?: ""
+        val phone = snapshot.getString("phone") ?: ""
+        val image = snapshot.getString("imageUrl") ?: ""
+
+        // Xử lý dateOfBirth
+        val rawDob = snapshot.get("dateOfBirth")
+        val dob: LocalDate? = parseDob(rawDob)
+
+        User(
+            idUser      = idUser,
+            email       = email,
+            name        = name,
+            dateOfBirth = dob,
+            phone       = phone,
+            role        = role,
+            imageUrl    = image
+        )
+    }.onFailure {
+        Log.e(TAG, "Failed to load user $idUser", it)
     }
 
-    /**
-     * Thêm nhân viên mới: tạo tài khoản trong Firebase Auth và lưu chi tiết vào Firestore.
-     */
-    suspend fun addEmployee(user: User): Result<String> {
-        return try {
-            val docRef = usersCollection.document()
-            val foodWithId = user.copy(idUser = docRef.id)
-            docRef.set(foodWithId).await()
-            Result.success("Thêm nhân viên thành công")
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun isPhoneNumberExists(phone: String): Boolean = try {
+        val querySnapshot = usersCollection.whereEqualTo("phone", phone).get().await()
+        !querySnapshot.isEmpty
+    } catch (e: Exception) {
+        false // Nếu lỗi thì coi như chưa tồn tại (hoặc xử lý khác tùy bạn)
     }
 
     /**
-     * Xóa nhân viên có idUser = [idUser].
+     * Tạo tài khoản mới trong Auth và thêm document trong Firestore.
      */
-    suspend fun deleteEmployee(idUser: String): Result<String> {
-        return try {
-            // Query tìm document có field idUser == idUser
-            val querySnapshot = usersCollection
-                .whereEqualTo("idUser", idUser)
-                .get()
-                .await()
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun addEmployee(user: User, rawPassword: String): Result<Unit> = runCatching {
+        auth.createUserWithEmailAndPassword(user.email, rawPassword).await()
+        val uid = auth.currentUser?.uid ?: throw Exception("Không lấy được UID")
+        val toSave = user.copy(idUser = uid)
+        usersCollection.document(uid).set(toSave).await()
+    }.fold(
+        onSuccess = { Result.success(Unit) },
+        onFailure = { e ->
+            if (e is FirebaseAuthException && e.errorCode == "ERROR_EMAIL_ALREADY_IN_USE" ) {
+                Result.failure(Exception("Email đã được sử dụng."))
+            }else{
+                Result.failure(Exception(e.localizedMessage ?: "Thêm nhân viên thất bại"))
+            }
+        }
+    )
 
-            if (querySnapshot.isEmpty) {
-                Result.failure(Exception("Không tìm thấy nhân viên với idUser = $idUser"))
-            } else {
-                // Xóa tất cả các document (thường chỉ có 1 bản ghi)
-                querySnapshot.documents.forEach { doc ->
-                    usersCollection.document(doc.id).delete().await()
+    /**
+     * Cập nhật thông tin user (không thay password) dựa trên document ID.
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun updateEmployee(user: User): Result<Unit> = runCatching {
+        val docRef = usersCollection.document(user.idUser)
+        val snapshot = docRef.get().await()
+
+        if (!snapshot.exists()) throw Exception("Không tìm thấy nhân viên để cập nhật")
+
+        val oldPassword = snapshot.getString("password") ?: ""
+
+        val userToUpdate = user.copy(password = oldPassword)
+
+        docRef.set(userToUpdate).await()
+    }.fold(
+        onSuccess = { Result.success(Unit) },
+        onFailure = { e -> Result.failure(Exception(e.localizedMessage ?: "Cập nhật thất bại")) }
+    )
+
+    /**
+     * Xóa nhân viên theo idUser (document ID).
+     */
+    suspend fun deleteEmployee(idUser: String): Result<Unit> = runCatching {
+        usersCollection.document(idUser).delete().await()
+    }.fold(
+        onSuccess = { Result.success(Unit) },
+        onFailure = { e -> Result.failure(Exception(e.localizedMessage ?: "Xóa thất bại")) }
+    )
+
+    /**
+     * Hàm helper parse day-of-birth từ nhiều kiểu input
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun parseDob(rawDob: Any?): LocalDate? {
+        return when (rawDob) {
+            is Timestamp -> rawDob.toDate()
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+
+            is String -> runCatching { LocalDate.parse(rawDob) }.getOrNull()
+
+            is Map<*, *> -> {
+                // Map có thể chứa keys: "year","month","monthValue","dayOfYear",...
+                val year      = (rawDob["year"] as? Number)?.toInt()
+                val dayOfYear = (rawDob["dayOfYear"] as? Number)?.toInt()
+                if (year != null && dayOfYear != null) {
+                    LocalDate.ofYearDay(year, dayOfYear)
+                } else {
+                    Log.e(TAG, "Invalid dob map fields: $rawDob")
+                    null
                 }
-                Result.success("Xóa nhân viên thành công")
             }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 
-    /**
-     * Cập nhật thông tin nhân viên.
-     * Toàn bộ fields trong [user] sẽ overwrite document hiện tại.
-     */
-    suspend fun updateEmployee(user: User): Result<String> {
-        return try {
-            // Tìm document theo idUser
-            val querySnapshot = usersCollection
-                .whereEqualTo("idUser", user.idUser)
-                .get()
-                .await()
-
-            if (querySnapshot.isEmpty) {
-                Result.failure(Exception("Không tìm thấy nhân viên với idUser = ${user.idUser}"))
-            } else {
-                // Lấy ID của document Firestore
-                val docId = querySnapshot.documents.first().id
-                // Ghi đè toàn bộ User mới lên document
-                usersCollection
-                    .document(docId)
-                    .set(user)
-                    .await()
-
-                Result.success("Cập nhật nhân viên thành công")
+            else -> {
+                if (rawDob != null) Log.e(TAG, "Unexpected dob type: ${rawDob::class.java}")
+                null
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 

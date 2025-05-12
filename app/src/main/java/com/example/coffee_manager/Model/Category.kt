@@ -6,12 +6,14 @@ package com.example.coffee_manager.Model
  */
 
 data class Category(
-    var idCat: String = "",    // Firestore document ID
-    var name: String = ""   // Tên danh mục (ví dụ: "Trà sữa", "Coffee")
+    val idCat: String,
+    val name: String,
+    val iconName: String // lưu tên icon được chọn, ví dụ "Coffee" hoặc resource name
 ) {
     // Firebase yêu cầu constructor không tham số
     constructor() : this(
         idCat = "",
-        name = ""
+        name = "",
+        iconName = ""
     )
 }

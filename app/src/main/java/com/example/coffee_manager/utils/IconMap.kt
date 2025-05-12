@@ -4,15 +4,15 @@ package com.example.coffee_manager.utils
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 
+// Ánh xạ tên logic → ImageVector
 object MaterialIconMap {
-    // Ánh xạ tên logic → ImageVector
     val map = mapOf(
-        "Cafe"      to Icons.Filled.LocalCafe,
-        "Fastfood"  to Icons.Filled.Fastfood,
-        "Cake"      to Icons.Filled.Cake,
-        "Drink"     to Icons.Filled.LocalDrink,
-        "Dessert"   to Icons.Filled.Icecream,
-        "Pastry"    to Icons.Filled.BakeryDining
+        "Cafe"      to Icons.Default.LocalCafe,
+        "Fastfood"  to Icons.Default.Fastfood,
+        "Cake"      to Icons.Default.Cake,
+        "Drink"     to Icons.Default.LocalDrink,
+        "Dessert"   to Icons.Default.Icecream,
+        "Bakery"    to Icons.Default.BakeryDining
     )
     val names = map.keys.toList()
 }

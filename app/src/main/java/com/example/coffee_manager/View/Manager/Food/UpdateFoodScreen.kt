@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavBackStackEntry
+import com.example.coffee_manager.Controller.Admin.CategoryController
 import com.example.coffee_manager.Controller.Admin.FoodController
 import com.example.coffee_manager.Controller.toBase64
 import com.example.coffee_manager.Controller.base64ToBitmap
@@ -49,7 +50,8 @@ fun UpdateFoodScreen(
     backStackEntry: NavBackStackEntry
 ) {
     val idArg = backStackEntry.arguments?.getString("idFood")
-    val controller = FoodController()
+    val catController = CategoryController()
+    val foodController = FoodController()
     var isLoading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
@@ -74,24 +76,35 @@ fun UpdateFoodScreen(
 
     // load existing food
     LaunchedEffect(idArg) {
-        idArg?.let { id ->
-            controller.getFoodById(id)
-                .onSuccess { food ->
-                    name = food.name
-                    recipe = food.recipe
-                    rawPrice = food.price.toString()
-                    displayPrice = if (rawPrice.isNotEmpty()) {
-                        NumberFormat.getNumberInstance(Locale("vi","VN")).format(rawPrice.toLong()) + " ₫"
-                    } else ""
-                    imageBase64 = food.imageUrl
-                }
-                .onFailure {
-                    message = "Không tải được món ăn: ${it.message}"
-                    showDialog = true
-                }
+        try {
+            val categoryResult = catController.getAllCategories()
+            val categoryList = categoryResult.getOrThrow()
+            cats = categoryList
+
+            if (idArg != null) {
+                val food = foodController.getFoodById(idArg).getOrThrow()
+
+                name = food.name
+                recipe = food.recipe
+                rawPrice = food.price.toString()
+                displayPrice = if (rawPrice.isNotEmpty()) {
+                    NumberFormat.getNumberInstance(Locale("vi", "VN")).format(rawPrice.toLong()) + " ₫"
+                } else ""
+                imageBase64 = food.imageUrl
+
+                // Cập nhật selectedCat khi đã có cats
+                selectedCat = categoryList.find { it.name == food.category }
+            }
+
+        } catch (e: Exception) {
+            message = "Lỗi khi tải dữ liệu: ${e.message}"
+            showDialog = true
+        } finally {
+            isLoading = false
         }
-        isLoading = false
     }
+
+
 
     // image picker
     val launcher = rememberLauncherForActivityResult(
@@ -164,7 +177,7 @@ fun UpdateFoodScreen(
                     )
                     Spacer(Modifier.height(8.dp))
 
-                    // Dropdown danh mục
+
                     ExposedDropdownMenuBox(
                         expanded = catExpanded,
                         onExpandedChange = { catExpanded = !catExpanded }
@@ -243,7 +256,7 @@ fun UpdateFoodScreen(
                                 category = selectedCat?.name.orEmpty()
                             )
                             CoroutineScope(Dispatchers.IO).launch {
-                                controller.updateFood(updated)
+                                foodController.updateFood(updated)
                                     .onSuccess {
                                         message = "Cập nhật thành công"
                                         showDialog = true

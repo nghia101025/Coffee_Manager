@@ -1,5 +1,8 @@
 package com.example.coffee_manager.View.Manager.Employee
 
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,9 +26,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserListScreen(navController: NavController) {
+    val TAG = "UserListScreen"
+
     val employeeController = remember { EmployeeController() }
     var userList by remember { mutableStateOf<List<User>>(emptyList()) }
     var filteredList by remember { mutableStateOf<List<User>>(emptyList()) }
@@ -33,37 +40,39 @@ fun UserListScreen(navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    // State để hiển thị dialog xóa
     var showDeleteDialog by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<User?>(null) }
 
     // Load danh sách
     LaunchedEffect(Unit) {
+        Log.d(TAG, "Fetching employee list...")
         val result = withContext(Dispatchers.IO) {
-            employeeController.getAllEmployee()
+            employeeController.getAllEmployees()
         }
-        result
-            .onSuccess {
-                userList = it
-                filteredList = it
-            }
-            .onFailure {
-                message = "Không tải được danh sách nhân viên: ${it.message}"
-            }
+        result.onSuccess {
+            Log.d(TAG, "Fetched ${it.size} employees")
+            userList = it
+            filteredList = it
+        }.onFailure {
+            Log.e(TAG, "Failed to fetch employees", it)
+            message = "Không tải được danh sách nhân viên: ${it.message}"
+        }
         isLoading = false
     }
 
-    // Hàm xóa user
     fun deleteUser(user: User) {
+        Log.d(TAG, "Attempt delete user: ${user.idUser}")
         CoroutineScope(Dispatchers.IO).launch {
             employeeController.deleteEmployee(user.idUser)
                 .onSuccess {
+                    Log.d(TAG, "Deleted user: ${user.idUser}")
                     withContext(Dispatchers.Main) {
                         userList = userList.filter { it.idUser != user.idUser }
                         filteredList = filteredList.filter { it.idUser != user.idUser }
                     }
                 }
                 .onFailure {
+                    Log.e(TAG, "Delete failed for ${user.idUser}", it)
                     withContext(Dispatchers.Main) {
                         message = "Xóa thất bại: ${it.message}"
                     }
@@ -71,11 +80,9 @@ fun UserListScreen(navController: NavController) {
         }
     }
 
-    Scaffold(
-        topBar = { CommonTopBar(navController = navController, title = "Danh sách nhân viên") }
-    ) { paddingValues ->
+    Scaffold(topBar = { CommonTopBar(navController, "Danh sách nhân viên") }) { paddingValues ->
         Column(
-            modifier = Modifier
+            Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
                 .padding(16.dp)
@@ -83,6 +90,7 @@ fun UserListScreen(navController: NavController) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { q ->
+                    Log.d(TAG, "Search query changed: $q")
                     searchQuery = q
                     filteredList = userList.filter {
                         it.phone.contains(q, true) || it.email.contains(q, true)
@@ -95,57 +103,72 @@ fun UserListScreen(navController: NavController) {
             Spacer(Modifier.height(16.dp))
 
             when {
-                isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                isLoading -> {
+                    Log.d(TAG, "Showing loading indicator")
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-                message != null -> Text(
-                    text = message!!,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                filteredList.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Không tìm thấy nhân viên nào")
+                message != null -> {
+                    Log.e(TAG, "Showing error message: $message")
+                    Text(
+                        text = message!!,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(filteredList) { user ->
-                        UserRow(
-                            user = user,
-                            onEdit = { navController.navigate("update_employee/${user.idUser}") },
-                            onDelete = {
-                                userToDelete = user
-                                showDeleteDialog = true
-                            }
-                        )
+                filteredList.isEmpty() -> {
+                    Log.d(TAG, "No employees to show")
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Không tìm thấy nhân viên nào")
+                    }
+                }
+                else -> {
+                    Log.d(TAG, "Displaying ${filteredList.size} employees")
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(filteredList) { user ->
+                            UserRow(
+                                user = user,
+                                onEdit = {
+                                    Log.d(TAG, "Edit clicked: ${user.idUser}")
+                                    navController.navigate("update_employee/${user.idUser}")
+                                },
+                                onDelete = {
+                                    Log.d(TAG, "Delete clicked: ${user.idUser}")
+                                    userToDelete = user
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Dialog xác nhận xóa
         if (showDeleteDialog && userToDelete != null) {
+            Log.d(TAG, "Showing delete dialog for ${userToDelete!!.idUser}")
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text("Xác nhận xóa") },
                 text = { Text("Bạn có chắc chắn muốn xóa nhân viên \"${userToDelete!!.name}\" không?") },
                 confirmButton = {
                     TextButton(onClick = {
+                        Log.d(TAG, "Confirmed delete for ${userToDelete!!.idUser}")
                         showDeleteDialog = false
                         deleteUser(userToDelete!!)
-                    }) {
-                        Text("OK")
-                    }
+                    }) { Text("OK") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Hủy")
-                    }
+                    TextButton(onClick = {
+                        Log.d(TAG, "Cancelled delete dialog")
+                        showDeleteDialog = false
+                    }) { Text("Hủy") }
                 }
             )
         }
     }
 }
-
 @Composable
 fun UserRow(user: User, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
