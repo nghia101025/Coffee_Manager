@@ -14,7 +14,6 @@ data class User(
     val role: String = "",
     val imageUrl: String = ""
 ){
-    // Firestore cần constructor không tham số
     constructor() : this(
         idUser = "",
         email = "",

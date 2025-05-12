@@ -63,7 +63,7 @@ fun LoginScreen(navController: NavController) {
             try {
                 when (role.trim().lowercase()) {
                     "quản lý"     -> navController.navigate("home_admin")
-                    "order"     -> navController.navigate("home_order")
+                    "phục vụ"     -> navController.navigate("home_order")
                     "thu ngân"  -> navController.navigate("home_thungan")
                     "đầu bếp"   -> navController.navigate("home_bep")
                     else        -> {
