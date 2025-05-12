@@ -16,6 +16,7 @@ import com.example.coffee_manager.View.Manager.Employee.RegisterScreen
 import com.example.coffee_manager.View.Manager.Employee.UserListScreen
 import com.example.coffee_manager.View.Chef.HomeBepScreen
 import com.example.coffee_manager.View.Order.OrderScreen
+import com.example.coffee_manager.View.Order.FoodDetailScreen
 import com.example.coffee_manager.View.Cashier.HomeThuNganScreen
 import com.example.coffee_manager.View.Manager.Employee.UpdateEmployeeScreen
 import com.example.coffee_manager.View.Manager.Food.CategoryListScreen
@@ -23,6 +24,9 @@ import com.example.coffee_manager.View.Manager.Food.FoodListScreen
 import com.example.coffee_manager.View.Manager.Food.UpdateFoodScreen
 import com.example.coffee_manager.View.Manager.Space.TableManagementScreen
 import com.example.coffee_manager.View.Manager.Table.TableDetailScreen
+import com.example.coffee_manager.View.Order.CartScreen
+import com.example.coffee_manager.View.ProfileScreen
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -44,6 +48,7 @@ fun AppNavigation(navController: NavHostController) {
         composable("user_list") { UserListScreen(navController) }
         composable("table_list") { TableManagementScreen(navController) }
         composable("category_list") { CategoryListScreen(navController) }
+        composable("profile") { ProfileScreen(navController) }
 
 
         composable(
@@ -76,6 +81,16 @@ fun AppNavigation(navController: NavHostController) {
             )
         }
 
+        composable(
+            "foodDetail/{foodId}",
+            arguments = listOf(navArgument("foodId") { type = NavType.StringType })
+        ) { backStack ->
+            val foodId = backStack.arguments?.getString("foodId")!!
+            FoodDetailScreen(navController, foodId)
+        }
+        composable("cart") {
+            CartScreen(navController)
+        }
 
 
 

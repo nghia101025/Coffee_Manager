@@ -1,17 +1,23 @@
 package com.example.coffee_manager.Controller.Admin
 
+import android.app.Activity
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.coffee_manager.Model.User
+import com.google.firebase.FirebaseException
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthOptions
+import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.concurrent.TimeUnit
 
 class EmployeeController {
     companion object {
@@ -21,6 +27,8 @@ class EmployeeController {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val usersCollection = db.collection("users")
+    private val otpCollection = db.collection("otp")
+
 
     /** Trả về FirebaseUser hiện tại (hoặc null nếu chưa đăng nhập) */
     fun getCurrentAuthUser(): FirebaseUser? = auth.currentUser
@@ -181,6 +189,43 @@ class EmployeeController {
                 null
             }
         }
+    }
+
+    fun sendOtp(
+        phoneNumber: String,
+        activity: Activity,
+        onCodeSent: (verificationId: String) -> Unit,
+        onFailed: (FirebaseException) -> Unit
+    ) {
+        val options = PhoneAuthOptions.newBuilder(auth)
+            .setPhoneNumber(phoneNumber)
+            .setTimeout(60, TimeUnit.SECONDS)
+            .setActivity(activity)
+            .setCallbacks(object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                override fun onCodeSent(id: String, token: PhoneAuthProvider.ForceResendingToken) {
+                    onCodeSent(id)
+                }
+                override fun onVerificationFailed(e: FirebaseException) {
+                    onFailed(e)
+                }
+                override fun onVerificationCompleted(credential: PhoneAuthCredential) {}
+            })
+            .build()
+        PhoneAuthProvider.verifyPhoneNumber(options)
+    }
+
+    fun changePassword(newPassword: String,
+                       onSuccess: ()->Unit,
+                       onFailure: (Exception)->Unit)
+    {
+        val user = auth.currentUser
+        if (user == null) {
+            onFailure(Exception("Chưa đăng nhập"))
+            return
+        }
+        user.updatePassword(newPassword)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
     }
 
 }

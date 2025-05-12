@@ -43,6 +43,7 @@ android {
 dependencies {
 
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.crashlytics.buildtools)
     dependencies {
 
         implementation(libs.navigation.compose)

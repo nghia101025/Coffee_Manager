@@ -91,6 +91,13 @@ fun UpdateEmployeeScreen(
     var imageBase64 by remember { mutableStateOf("") }
     var imageError by remember { mutableStateOf<String?>(null) }
 
+    // state đổi mật khẩu
+    var showChangePwdDialog by remember { mutableStateOf(false) }
+    var newPwd by remember { mutableStateOf("") }
+    var confirmPwd by remember { mutableStateOf("") }
+    var pwdError by remember { mutableStateOf<String?>(null) }
+
+
 
     // load user once
     LaunchedEffect(userId) {
@@ -229,6 +236,23 @@ fun UpdateEmployeeScreen(
                     imageError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     Spacer(Modifier.height(16.dp))
 
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            newPwd = ""
+                            confirmPwd = ""
+                            pwdError = null
+                            showChangePwdDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text("Đổi mật khẩu", color = Color.White)
+                    }
+
+
                     // Submit
                     Button(
                         onClick = {
@@ -309,6 +333,66 @@ fun UpdateEmployeeScreen(
             }
         }
     }
+
+    if (showChangePwdDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangePwdDialog = false },
+            title = { Text("Đổi mật khẩu") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newPwd,
+                        onValueChange = { newPwd = it; pwdError = null },
+                        label = { Text("Mật khẩu mới") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = confirmPwd,
+                        onValueChange = { confirmPwd = it; pwdError = null },
+                        label = { Text("Xác nhận mật khẩu") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    pwdError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Validate
+                    when {
+                        newPwd.length < 8 -> pwdError = "Mật khẩu tối thiểu 8 ký tự"
+                        newPwd != confirmPwd -> pwdError = "Mật khẩu không khớp"
+                        else -> {
+                            // Gọi controller đổi mật khẩu
+                            controller.changePassword(newPwd,
+                                onSuccess = {
+                                    message = "Đổi mật khẩu thành công"
+                                    showDialog = true
+                                    showChangePwdDialog = false
+                                },
+                                onFailure = { ex ->
+                                    message = "Lỗi: ${ex.message}"
+                                    showDialog = true
+                                }
+                            )
+                        }
+                    }
+                }) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangePwdDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

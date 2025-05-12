@@ -18,8 +18,7 @@ class CategoryController {
             val result = snapshot.documents.mapNotNull { doc ->
                 val id       = doc.id
                 val name     = doc.getString("name")
-                val iconName = doc.getString("iconName") ?: MaterialIconMap.names.first()
-                if (name != null) Category(idCat = id, name = name, iconName = iconName)
+                if (name != null) Category(idCat = id, name = name)
                 else null
             }
             Result.success(result)
@@ -44,7 +43,6 @@ class CategoryController {
             val data = hashMapOf(
                 "id"       to newDoc.id,
                 "name"     to name,
-                "iconName" to iconName
             )
             newDoc.set(data).await()
             Result.success(newDoc.id)
