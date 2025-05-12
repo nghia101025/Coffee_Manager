@@ -73,4 +73,23 @@ class BillController {
             carts.document(doc.id).delete().await()
         }
     }
+    /**
+     * Cập nhật số lượng (quantity) cho món đã có trong giỏ.
+     */
+    suspend fun updateQuantity(foodId: String, newQuantity: Int): Result<Unit> = runCatching {
+        val uid = SessionManager.currentUserId
+            .takeIf { it.isNotBlank() } ?: throw Exception("Chưa đăng nhập")
+        // tìm document phù hợp
+        val snap = carts
+            .whereEqualTo("userId", uid)
+            .whereEqualTo("foodId", foodId)
+            .get()
+            .await()
+        if (snap.isEmpty) throw Exception("Món chưa tồn tại trong giỏ")
+        // thường chỉ có 1 doc
+        val docId = snap.documents.first().id
+        carts.document(docId)
+            .update("quantity", newQuantity)
+            .await()
+    }
 }

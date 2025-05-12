@@ -34,6 +34,8 @@ import com.example.coffee_manager.Controller.Admin.FoodController
 import com.example.coffee_manager.Model.Category
 import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.R
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -235,10 +237,11 @@ fun OrderScreen(navController: NavController) {
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 Text(
-                                    "${f.price}₫",
+                                    "${NumberFormat.getNumberInstance(Locale("vi", "VN")).format(f.price)}₫",
                                     color = Color.White,
                                     style = MaterialTheme.typography.bodySmall
                                 )
+
                             }
                         }
                     }

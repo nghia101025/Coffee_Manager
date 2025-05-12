@@ -1,3 +1,4 @@
+// View/Order/CartScreen.kt
 package com.example.coffee_manager.View.Order
 
 import android.graphics.BitmapFactory
@@ -9,7 +10,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +30,7 @@ import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.View.CommonTopBar
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +83,7 @@ fun CartScreen(navController: NavController) {
                 ) {
                     Text(
                         text = "Tổng: ${
-                            NumberFormat.getNumberInstance(Locale("vi","VN"))
+                            NumberFormat.getNumberInstance(Locale("vi", "VN"))
                                 .format(totalPrice)
                         }₫",
                         style = MaterialTheme.typography.titleMedium
@@ -108,15 +111,39 @@ fun CartScreen(navController: NavController) {
                             CartItemRow(
                                 food = food,
                                 quantity = ci.quantity,
+                                onIncrease = {
+                                    scope.launch {
+                                        billController.updateQuantity(ci.foodId, ci.quantity + 1)
+                                            .onSuccess {
+                                                cartItems = cartItems.map {
+                                                    if (it.foodId == ci.foodId) it.copy(quantity = it.quantity + 1)
+                                                    else it
+                                                }
+                                            }
+                                            .onFailure { message = "Cập nhật thất bại: ${it.message}" }
+                                    }
+                                },
+                                onDecrease = {
+                                    if (ci.quantity > 1) {
+                                        scope.launch {
+                                            billController.updateQuantity(ci.foodId, ci.quantity - 1)
+                                                .onSuccess {
+                                                    cartItems = cartItems.map {
+                                                        if (it.foodId == ci.foodId) it.copy(quantity = it.quantity - 1)
+                                                        else it
+                                                    }
+                                                }
+                                                .onFailure { message = "Cập nhật thất bại: ${it.message}" }
+                                        }
+                                    }
+                                },
                                 onRemove = {
                                     scope.launch {
                                         billController.removeFromCart(ci.foodId)
                                             .onSuccess {
                                                 cartItems = cartItems.filterNot { it.foodId == ci.foodId }
                                             }
-                                            .onFailure {
-                                                message = "Xóa thất bại: ${it.message}"
-                                            }
+                                            .onFailure { message = "Xóa thất bại: ${it.message}" }
                                     }
                                 }
                             )
@@ -136,6 +163,8 @@ fun CartScreen(navController: NavController) {
 private fun CartItemRow(
     food: Food,
     quantity: Int,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit,
     onRemove: () -> Unit
 ) {
     Card(Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
@@ -173,15 +202,26 @@ private fun CartItemRow(
                 Text(food.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text(
                     "Giá: ${
-                        NumberFormat.getNumberInstance(Locale("vi","VN"))
+                        NumberFormat.getNumberInstance(Locale("vi", "VN"))
                             .format(food.price)
                     }₫",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Text("Số lượng: $quantity", style = MaterialTheme.typography.bodySmall)
+
+                // Row điều chỉnh số lượng
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDecrease, enabled = quantity > 1) {
+                        Icon(Icons.Default.Remove, contentDescription = "Giảm")
+                    }
+                    Text("$quantity", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 8.dp))
+                    IconButton(onClick = onIncrease) {
+                        Icon(Icons.Default.Add, contentDescription = "Tăng")
+                    }
+                }
+
                 Text(
                     "Tổng: ${
-                        NumberFormat.getNumberInstance(Locale("vi","VN"))
+                        NumberFormat.getNumberInstance(Locale("vi", "VN"))
                             .format(food.price * quantity)
                     }₫",
                     style = MaterialTheme.typography.bodySmall

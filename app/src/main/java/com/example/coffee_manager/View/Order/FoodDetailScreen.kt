@@ -26,6 +26,8 @@ import com.example.coffee_manager.Controller.Order.BillController
 import com.example.coffee_manager.Model.Food
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,7 +108,12 @@ fun FoodDetailScreen(
 
                         // Tên & Giá
                         Text(f.name, style = MaterialTheme.typography.titleLarge)
-                        Text("${f.price}₫", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "${NumberFormat.getNumberInstance(Locale("vi", "VN")).format(f.price)}₫",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
 
                         // Category
                         Text("Danh mục: ${f.category}", style = MaterialTheme.typography.bodyMedium)
