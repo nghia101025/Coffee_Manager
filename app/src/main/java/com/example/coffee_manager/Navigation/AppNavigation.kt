@@ -27,6 +27,7 @@ import com.example.coffee_manager.View.Manager.Food.UpdateFoodScreen
 import com.example.coffee_manager.View.Manager.Space.TableManagementScreen
 import com.example.coffee_manager.View.Manager.Table.TableDetailScreen
 import com.example.coffee_manager.View.Order.CartScreen
+import com.example.coffee_manager.View.Order.OrderSuccessScreen
 import com.example.coffee_manager.View.Order.PaymentScreen
 import com.example.coffee_manager.View.ProfileScreen
 
@@ -97,6 +98,16 @@ fun AppNavigation(navController: NavHostController) {
         composable("payment") {
             PaymentScreen(navController)
         }
+        composable(
+            route = "orderSuccess/{orderId}",
+            arguments = listOf(navArgument("orderId") {
+                type = NavType.StringType
+            })
+        ) { backStack ->
+            val orderId = backStack.arguments?.getString("orderId") ?: ""
+            OrderSuccessScreen(orderId = orderId, navController = navController)
+        }
+
 
 
 

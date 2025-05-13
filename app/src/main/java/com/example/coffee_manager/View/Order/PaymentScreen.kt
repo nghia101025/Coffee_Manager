@@ -1,5 +1,8 @@
+// View/Order/PaymentScreen.kt
 package com.example.coffee_manager.View.Order
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -9,30 +12,40 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.coffee_manager.Controller.Order.BillController
 import com.example.coffee_manager.Controller.Admin.FoodController
+import com.example.coffee_manager.Controller.Admin.TableController
+import com.example.coffee_manager.Controller.Order.BillController
+import com.example.coffee_manager.Model.Bill
+import com.example.coffee_manager.Model.BillItem
 import com.example.coffee_manager.Model.CartItem
 import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.View.CommonTopBar
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.*
+
+private const val TAG = "PaymentScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(
     navController: NavController,
-    billController: BillController = BillController(),
+    controller: BillController = BillController(),
+    tableController: TableController = TableController(),
     foodController: FoodController = FoodController()
 ) {
     val fmt = NumberFormat.getNumberInstance(Locale("vi", "VN"))
@@ -43,198 +56,285 @@ fun PaymentScreen(
     var selectedMethod by remember { mutableStateOf("Tiền mặt") }
     var message by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
 
-    // Load cart and food data
+    // 1) Load cart and foods
     LaunchedEffect(Unit) {
+        Log.d(TAG, "Loading cart…")
         isLoading = true
-        billController.getCart()
+        controller.getCart()
             .onSuccess { cis ->
+                Log.d(TAG, "Cart loaded: ${cis.size}")
                 cartItems = cis
-                Log.d("PaymentScreen", "cartItems size: ${cis.size}")
-
+                // fetch foods
                 val foods = cis.map { it.foodId }
                     .distinct()
                     .mapNotNull { id ->
-                        val foodResult = foodController.getFoodById(id).getOrNull()
-                        Log.d("PaymentScreen", "Fetched food for ID $id: ${foodResult?.name}")
-                        foodResult
+                        foodController.getFoodById(id).getOrNull().also {
+                            Log.d(TAG, "Food $id -> $it")
+                        }
                     }
-                foodsMap = foods.associateBy { it.idFood }
-                Log.d("PaymentScreen", "foodsMap size: ${foodsMap.size}")
+                foodsMap = foods.associateBy { it.idFood.toString() }
+                Log.d(TAG, "foodsMap keys=${foodsMap.keys}")
             }
             .onFailure {
-                message = it.message
-                Log.e("PaymentScreen", "Error loading cart: ${it.message}")
+                message = "Lỗi tải giỏ hàng: ${it.message}"
+                Log.e(TAG, it.message ?: "", it)
             }
         isLoading = false
     }
 
+    // 2) Compute totals
     val subtotal = cartItems.sumOf { ci ->
-        val price = foodsMap[ci.foodId]?.price ?: 0L
-        price * ci.quantity
-    }.toDouble()
-    val discount = 0.0
-    val total = subtotal - discount
+        (foodsMap[ci.foodId]?.price ?: 0L) * ci.quantity
+    }
+    val discountPercent = promoCode.toIntOrNull() ?: 0
+    val discountAmount = subtotal * discountPercent / 100
+    val totalPrice = subtotal - discountAmount
+    Log.d(TAG, "subtotal=$subtotal discount=$discountAmount total=$totalPrice")
 
     Scaffold(
-        topBar = { CommonTopBar(navController, title = "Trang thanh toán") },
+        topBar = { CommonTopBar(navController, title = "Thanh toán") },
         bottomBar = {
-            Button(
-                onClick = { /* Xử lý đặt hàng */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(16.dp),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Text("Đặt hàng", style = MaterialTheme.typography.titleMedium)
+            Box(Modifier.padding(16.dp)) {
+                Button(
+                    onClick = {
+                        if (tableNumber.isBlank()) {
+                            message = "Vui lòng nhập số bàn"
+                            return@Button
+                        }
+                        scope.launch {
+                            isLoading = true
+                            // check table status
+                            runCatching {
+                                tableController.getTableStatus(tableNumber)
+                            }.fold(onSuccess = { status ->
+                                Log.d(TAG, "Table $tableNumber status=$status")
+                                if (status != "EMPTY") {
+                                    message = "Bàn $tableNumber không trống"
+                                    isLoading = false
+                                    return@launch
+                                }
+                            }, onFailure = {
+                                message = "Lỗi lấy trạng thái bàn: ${it.message}"
+                                isLoading = false
+                                return@launch
+                            })
+
+                            // build items & bill
+                            val items = cartItems.map { ci ->
+                                val f = foodsMap[ci.foodId]!!
+                                BillItem(ci.foodId, f.name, f.price.toLong(), ci.quantity)
+                            }
+                            val bill = Bill(
+                                idBill = "",
+                                idTable = tableNumber,
+                                items = items,
+                                note = selectedMethod,
+                                discountPercent = discountPercent,
+                                totalPrice = totalPrice,
+                                isPaid = true,
+                                isProcessed = false
+                            )
+                            // create bill
+                            controller.createBill(bill)
+                                .onSuccess { id ->
+                                    Log.d(TAG, "Bill created id=$id")
+                                    // update table
+                                    tableController.updateTableStatus(tableNumber, "OCCUPIED")
+                                        .onSuccess { Log.d(TAG, "Table updated") }
+                                        .onFailure { Log.e(TAG, "Error updating table", it) }
+                                    // clear cart
+                                    controller.clearCart()
+                                        .onSuccess { Log.d(TAG, "Cart cleared") }
+                                        .onFailure { Log.e(TAG, "Error clearing cart", it) }
+                                    // navigate success
+                                    navController.navigate("orderSuccess/$id") {
+                                        popUpTo("payment") { inclusive = true }
+                                    }
+                                }
+                                .onFailure {
+                                    message = "Lỗi tạo đơn: ${it.message}"
+                                    Log.e(TAG, "createBill failed", it)
+                                }
+                            isLoading = false
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text("Lên đơn • ${fmt.format(totalPrice)}₫")
+                }
             }
         }
     ) { padding ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when {
-                isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            if (isLoading) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+            }
+            message?.let { msg ->
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                ) { Text(msg) }
+            }
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = tableNumber,
+                    onValueChange = { tableNumber = it },
+                    label = { Text("Số bàn") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                message != null -> {
-                    Text(
-                        text = message!!,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
-                else -> {
-                    Column(
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    LazyColumn(
                         Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Nhập số bàn
-                        OutlinedTextField(
-                            value = tableNumber,
-                            onValueChange = { tableNumber = it },
-                            label = { Text("Nhập số bàn") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        items(cartItems) { ci ->
+                            val food = foodsMap[ci.foodId] ?: return@items
+                            val bmp = runCatching {
+                                Base64.decode(food.imageUrl, Base64.DEFAULT)
+                                    .let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }
+                            }.getOrNull()
 
-                        // Danh sách món
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            elevation = CardDefaults.cardElevation(4.dp)
-                        ) {
-                            LazyColumn(
+                            Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    .background(Color(0xFFF7F7F7))
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                items(cartItems) { ci ->
-                                    val food = foodsMap[ci.foodId] ?: return@items
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .background(Color(0xFFF7F7F7))
-                                            .padding(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(food.imageUrl),
-                                            contentDescription = food.name,
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(RoundedCornerShape(4.dp)),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        Spacer(Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(food.name, style = MaterialTheme.typography.bodyLarge)
-                                            Text("x${ci.quantity}", style = MaterialTheme.typography.bodySmall)
-                                        }
-                                        Text(
-                                            "${fmt.format(food.price * ci.quantity)}₫",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                    }
+                                if (bmp != null) {
+                                    Image(
+                                        bitmap = bmp.asImageBitmap(),
+                                        contentDescription = food.name,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(food.imageUrl),
+                                        contentDescription = food.name,
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
                                 }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(food.name, style = MaterialTheme.typography.bodyLarge)
+                                    Text("x${ci.quantity}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text(
+                                    "${fmt.format((food.price * ci.quantity).toLong())}₫",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
                             }
                         }
+                    }
+                }
 
-                        // Nhập mã giảm giá
-                        OutlinedTextField(
-                            value = promoCode,
-                            onValueChange = { promoCode = it },
-                            label = { Text("Nhập mã giảm giá") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                OutlinedTextField(
+                    value = promoCode,
+                    onValueChange = { promoCode = it },
+                    label = { Text("Mã giảm giá (%)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                        // Phương thức + Tổng
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Phương thức", style = MaterialTheme.typography.bodyLarge)
+                    Text("${fmt.format(totalPrice)}₫", style = MaterialTheme.typography.bodyLarge)
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Tiền mặt", "Chuyển khoản").forEach { method ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedMethod = method }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedMethod == method,
+                                    onClick = { selectedMethod = method }
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(method, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
+                // Tóm tắt tính toán
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(4.dp)
+                ) {
+                    Column(
+                        Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Row(
                             Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Phương thức thanh toán", style = MaterialTheme.typography.bodyLarge)
-                            Text("${fmt.format(total)}₫", style = MaterialTheme.typography.bodyLarge)
+                            Text("Tạm tính", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "${fmt.format(subtotal)}₫",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
-
-                        // Chọn phương thức
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("Tiền mặt", "Chuyển khoản").forEach { method ->
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .clickable { selectedMethod = method }
-                                            .padding(vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        RadioButton(
-                                            selected = selectedMethod == method,
-                                            onClick = { selectedMethod = method }
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(method, style = MaterialTheme.typography.bodyLarge)
-                                    }
-                                }
-                            }
+                            Text("Giảm giá", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "-${fmt.format(discountAmount)}₫",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
-
-                        // Tóm tắt tính toán
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                        Divider(Modifier.padding(vertical = 4.dp))
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Tạm tính", style = MaterialTheme.typography.bodyMedium)
-                                    Text("${fmt.format(subtotal)}₫", style = MaterialTheme.typography.bodyMedium)
-                                }
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Giảm giá", style = MaterialTheme.typography.bodyMedium)
-                                    Text("-${fmt.format(discount)}₫", style = MaterialTheme.typography.bodyMedium)
-                                }
-                                Divider(Modifier.padding(vertical = 4.dp))
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Tổng cộng", style = MaterialTheme.typography.titleMedium)
-                                    Text("${fmt.format(total)}₫", style = MaterialTheme.typography.titleMedium)
-                                }
-                            }
+                            Text("Tổng cộng", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "${fmt.format(totalPrice)}₫",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                     }
                 }

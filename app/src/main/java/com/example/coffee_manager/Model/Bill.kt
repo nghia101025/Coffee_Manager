@@ -1,3 +1,4 @@
+// Model/Bill.kt
 package com.example.coffee_manager.Model
 
 data class BillItem(
@@ -14,5 +15,7 @@ data class Bill(
     val note: String = "",
     val discountPercent: Int = 0,
     val totalPrice: Long = 0L,
+    val isPaid: Boolean = false,
+    val isProcessed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -102,6 +102,7 @@ fun TableManagementScreen(navController: NavController) {
                                         ).onSuccess {
                                             controller.getAllTables().onSuccess { tables = it }
                                             message = "Thêm bàn thành công"
+                                            newNumber = ""
                                             showMsg = true
                                         }.onFailure {
                                             message = "Lỗi: ${it.message}"

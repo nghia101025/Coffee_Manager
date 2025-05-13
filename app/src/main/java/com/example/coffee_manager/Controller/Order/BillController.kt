@@ -1,6 +1,7 @@
 // Controller/Order/BillController.kt
 package com.example.coffee_manager.Controller.Order
 
+import com.example.coffee_manager.Model.Bill
 import com.example.coffee_manager.Model.CartItem
 import com.example.coffee_manager.Model.Order
 import com.example.coffee_manager.Model.SessionManager
@@ -12,6 +13,8 @@ class BillController {
     private val db = FirebaseFirestore.getInstance()
     private val carts = db.collection("carts")
     private val orders = db.collection("orders")
+    private val billsCol = db.collection("bills")
+
 
     /** Lấy giỏ hàng */
     suspend fun getCart(): Result<List<CartItem>> = runCatching {
@@ -44,6 +47,15 @@ class BillController {
             .whereEqualTo("foodId", foodId)
             .get().await()
             .documents.forEach { it.reference.delete().await() }
+    }
+    suspend fun clearCart(): Result<Unit> = runCatching {
+        val uid = SessionManager.currentUserId
+            .takeIf { it.isNotBlank() }
+            ?: throw Exception("Chưa đăng nhập")
+        val snap = carts.whereEqualTo("userId", uid).get().await()
+        snap.documents.forEach { doc ->
+            carts.document(doc.id).delete().await()
+        }
     }
 
     /** Cập nhật quantity */
@@ -101,5 +113,16 @@ class BillController {
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .get().await()
             .documents.mapNotNull { it.toObject(Order::class.java) }
+    }
+
+    /**
+     * Tạo mới một Bill và lưu lên Firestore.
+     */
+    suspend fun createBill(bill: Bill): Result<String> = runCatching {
+        // tạo document mới
+        val ref = billsCol.document()
+        val withId = bill.copy(idBill = ref.id)
+        ref.set(withId).await()
+        ref.id
     }
 }

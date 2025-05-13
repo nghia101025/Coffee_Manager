@@ -1,6 +1,7 @@
 package com.example.coffee_manager.View.Manager
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.*
@@ -26,10 +28,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.coffee_manager.Model.FeatureItem
 import com.example.coffee_manager.Model.FeatureSection
+import com.example.coffee_manager.R
 import com.example.coffee_manager.View.CommonTopBar
 
 
@@ -41,7 +45,11 @@ fun HomeAdminScreen(navController: NavController) {
         FeatureSection(
             sectionTitle = "Quản lý nhân viên",
             items = listOf(
-                FeatureItem("Thêm nhân viên", { Icon(Icons.Default.PersonAdd, null) }, "add_employee"),
+                FeatureItem(
+                    "Thêm nhân viên",
+                    { Icon(Icons.Default.PersonAdd, null) },
+                    "add_employee"
+                ),
                 FeatureItem("Danh sách NV", { Icon(Icons.Default.List, null) }, "user_list")
             )
         ),
@@ -49,63 +57,88 @@ fun HomeAdminScreen(navController: NavController) {
             sectionTitle = "Quản lý thực đơn",
             items = listOf(
                 FeatureItem("Thêm thực đơn", { Icon(Icons.Default.Fastfood, null) }, "add_food"),
-                FeatureItem("Danh sách thực đơn", { Icon(Icons.Default.ViewList, null) }, "food_list"),
+                FeatureItem(
+                    "Danh sách thực đơn",
+                    { Icon(Icons.Default.ViewList, null) },
+                    "food_list"
+                ),
                 FeatureItem("Danh mục", { Icon(Icons.Default.Category, null) }, "category_list")
             )
         ),
         FeatureSection(
             sectionTitle = "Quản lý không gian",
             items = listOf(
-                FeatureItem("Danh sách bàn", { Icon(Icons.Default.TableRestaurant, null) }, "table_list")
+                FeatureItem(
+                    "Danh sách bàn",
+                    { Icon(Icons.Default.TableRestaurant, null) },
+                    "table_list"
+                )
             )
         ),
         FeatureSection(
             sectionTitle = "Quản lý doanh thu",
             items = listOf(
-                FeatureItem("Doanh thu", { Icon(Icons.Default.AttachMoney, null) }, "manager_revenue"),
+                FeatureItem(
+                    "Doanh thu",
+                    { Icon(Icons.Default.AttachMoney, null) },
+                    "manager_revenue"
+                ),
                 FeatureItem("Hóa đơn", { Icon(Icons.Default.ReceiptLong, null) }, "manager_bill")
             )
         )
     )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Menu") },
+                actions = {
+                    IconButton(onClick = { navController.navigate("profile") }) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_account),
+                            contentDescription = "User Profile",
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                },
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            featureSections.forEach { section ->
+                Text(section.sectionTitle, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(26.dp))
+                val horizontalScroll = rememberScrollState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        CommonTopBar(navController = navController, title = "Trang chủ")
-
-        featureSections.forEach { section ->
-            Text(section.sectionTitle, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-
-            val horizontalScroll = rememberScrollState()
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(horizontalScroll),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                section.items.forEach { item ->
-                    Card(
-                        modifier = Modifier
-                            .width(140.dp)
-                            .clickable { navController.navigate(item.route) },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(horizontalScroll),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    section.items.forEach { item ->
+                        Card(
                             modifier = Modifier
-                                .padding(12.dp)
-                                .fillMaxWidth(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .width(140.dp)
+                                .clickable { navController.navigate(item.route) },
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            item.icon()
-                            Spacer(Modifier.height(8.dp))
-                            Text(item.title, style = MaterialTheme.typography.bodyMedium)
+                            Column(
+                                modifier = Modifier
+                                    .padding(12.dp)
+                                    .fillMaxWidth(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                item.icon()
+                                Spacer(Modifier.height(8.dp))
+                                Text(item.title, style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }

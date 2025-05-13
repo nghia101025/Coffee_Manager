@@ -31,12 +31,12 @@ fun OrderSuccessScreen(orderId: String, navController: NavController) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.Green, modifier = Modifier.size(64.dp))
                 Spacer(Modifier.height(16.dp))
-                Text("Đặt hàng thành công!", style = MaterialTheme.typography.titleLarge)
+                Text("Lên đơn thành công!", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
                 Text("Mã đơn: $orderId", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = {
-                    navController.navigate("menu") {
+                    navController.navigate("home_order") {
                         popUpTo("orderSuccess/$orderId") { inclusive = true }
                     }
                 }) { Text("Quay về Menu") }

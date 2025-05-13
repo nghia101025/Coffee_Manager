@@ -1,5 +1,6 @@
 package com.example.coffee_manager.Controller.Admin
 
+import com.example.coffee_manager.Model.SessionManager
 import com.example.coffee_manager.Model.Table
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -103,5 +104,24 @@ class TableController {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getTableStatus(tableId: String): String {
+        val doc = tablesCollection.document(tableId).get().await()
+        if (!doc.exists()) {
+            // Không ném nữa, mà coi như bàn trống
+            return "EMPTY"
+        }
+        return doc.getString("status")
+            ?: throw Exception("Bàn $tableId đã có document nhưng thiếu field 'status'")
+    }
+
+    /**
+     * Cập nhật trạng thái bàn (tạo document nếu chưa có).
+     */
+    suspend fun updateTableStatus(tableId: String, newStatus: String) = runCatching {
+        tablesCollection.document(tableId)
+            .set(mapOf("status" to newStatus))
+            .await()
     }
 }
