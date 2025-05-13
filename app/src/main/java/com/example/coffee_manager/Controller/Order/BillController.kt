@@ -2,94 +2,104 @@
 package com.example.coffee_manager.Controller.Order
 
 import com.example.coffee_manager.Model.CartItem
+import com.example.coffee_manager.Model.Order
 import com.example.coffee_manager.Model.SessionManager
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 
 class BillController {
     private val db = FirebaseFirestore.getInstance()
     private val carts = db.collection("carts")
+    private val orders = db.collection("orders")
 
-    /**
-     * Lấy toàn bộ CartItem của user hiện tại.
-     */
+    /** Lấy giỏ hàng */
     suspend fun getCart(): Result<List<CartItem>> = runCatching {
-        val uid = SessionManager.currentUserId
-            .takeIf { it.isNotBlank() } ?: throw Exception("Chưa đăng nhập")
-        val snap = carts.whereEqualTo("userId", uid).get().await()
-        snap.documents.mapNotNull { doc ->
-            doc.toObject(CartItem::class.java)
-                ?.copy(id = doc.id)
-        }
+        val uid = SessionManager.currentUserId.ifBlank { throw Exception("Chưa đăng nhập") }
+        carts.whereEqualTo("userId", uid).get().await()
+            .documents.mapNotNull { it.toObject(CartItem::class.java)?.copy(id = it.id) }
     }
 
-    /**
-     * Thêm hoặc cập nhật số lượng trong giỏ cho user hiện tại.
-     */
+    /** Thêm / cập nhật quantity */
     suspend fun addToCart(foodId: String, quantity: Int): Result<Unit> = runCatching {
-        val uid = SessionManager.currentUserId
-            .takeIf { it.isNotBlank() } ?: throw Exception("Chưa đăng nhập")
-
-        // Tìm xem đã có item cùng userId & foodId chưa
-        val existing = carts
+        val uid = SessionManager.currentUserId.ifBlank { throw Exception("Chưa đăng nhập") }
+        val snap = carts
             .whereEqualTo("userId", uid)
             .whereEqualTo("foodId", foodId)
-            .get()
-            .await()
+            .get().await()
 
-        if (existing.isEmpty) {
-            // thêm mới
-            val item = CartItem(
-                id = "",          // Firestore tự sinh ID
-                userId = uid,
-                foodId = foodId,
-                quantity = quantity
-            )
-            carts.add(item).await()
+        if (snap.isEmpty) {
+            carts.add(CartItem(id = "", userId = uid, foodId = foodId, quantity = quantity)).await()
         } else {
-            // cập nhật quantity
-            val docId = existing.documents.first().id
-            // cộng dồn số lượng
-            val oldQty = existing.documents.first().getLong("quantity") ?: 0L
-            val newQty = oldQty + quantity
-            carts.document(docId)
-                .update("quantity", newQty)
-                .await()
+            val doc = snap.documents.first()
+            val oldQty = doc.getLong("quantity") ?: 0L
+            doc.reference.update("quantity", oldQty + quantity).await()
         }
     }
 
-    /**
-     * Xóa một món khỏi giỏ theo foodId của user hiện tại.
-     */
+    /** Xóa 1 item */
     suspend fun removeFromCart(foodId: String): Result<Unit> = runCatching {
-        val uid = SessionManager.currentUserId
-            .takeIf { it.isNotBlank() } ?: throw Exception("Chưa đăng nhập")
-        val snap = carts
-            .whereEqualTo("userId", uid)
+        val uid = SessionManager.currentUserId.ifBlank { throw Exception("Chưa đăng nhập") }
+        carts.whereEqualTo("userId", uid)
             .whereEqualTo("foodId", foodId)
-            .get()
-            .await()
-        snap.documents.forEach { doc ->
-            carts.document(doc.id).delete().await()
-        }
+            .get().await()
+            .documents.forEach { it.reference.delete().await() }
     }
-    /**
-     * Cập nhật số lượng (quantity) cho món đã có trong giỏ.
-     */
+
+    /** Cập nhật quantity */
     suspend fun updateQuantity(foodId: String, newQuantity: Int): Result<Unit> = runCatching {
-        val uid = SessionManager.currentUserId
-            .takeIf { it.isNotBlank() } ?: throw Exception("Chưa đăng nhập")
-        // tìm document phù hợp
-        val snap = carts
-            .whereEqualTo("userId", uid)
-            .whereEqualTo("foodId", foodId)
-            .get()
-            .await()
-        if (snap.isEmpty) throw Exception("Món chưa tồn tại trong giỏ")
-        // thường chỉ có 1 doc
-        val docId = snap.documents.first().id
-        carts.document(docId)
-            .update("quantity", newQuantity)
-            .await()
+        val uid = SessionManager.currentUserId.ifBlank { throw Exception("Chưa đăng nhập") }
+        val snap = carts.whereEqualTo("userId", uid)
+            .whereEqualTo("foodId", foodId).get().await()
+        if (snap.isEmpty) throw Exception("Món chưa có trong giỏ")
+        snap.documents.first().reference.update("quantity", newQuantity).await()
+    }
+
+    /**
+     * Đặt hàng: nhận thêm subtotal, discount, total do UI tính sẵn.
+     * Trả về orderId.
+     */
+    suspend fun placeOrder(
+        items: List<CartItem>,
+        tableNumber: String,
+        promoCode: String,
+        paymentMethod: String,
+        subtotal: Long,
+        discount: Long,
+        total: Long
+    ): Result<String> = runCatching {
+        if (tableNumber.isBlank()) throw Exception("Vui lòng nhập số bàn")
+        val uid = SessionManager.currentUserId.ifBlank { throw Exception("Chưa đăng nhập") }
+
+        // Tạo order
+        val ref = orders.document()
+        val order = Order(
+            id = ref.id,
+            userId = uid,
+            items = items,
+            tableNumber = tableNumber,
+            promoCode = promoCode,
+            paymentMethod = paymentMethod,
+            subtotal = subtotal,
+            discount = discount,
+            total = total,
+            timestamp = System.currentTimeMillis()
+        )
+        ref.set(order).await()
+
+        // Xóa giỏ hàng
+        carts.whereEqualTo("userId", uid).get().await()
+            .documents.forEach { it.reference.delete().await() }
+
+        ref.id
+    }
+
+    /** Lấy lịch sử order */
+    suspend fun getOrderHistory(): Result<List<Order>> = runCatching {
+        val uid = SessionManager.currentUserId.ifBlank { throw Exception("Chưa đăng nhập") }
+        orders.whereEqualTo("userId", uid)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .get().await()
+            .documents.mapNotNull { it.toObject(Order::class.java) }
     }
 }

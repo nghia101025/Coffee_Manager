@@ -9,6 +9,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.coffee_manager.Model.CartItem
+import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.View.*
 import com.example.coffee_manager.View.Manager.Food.AddFoodScreen
 import com.example.coffee_manager.View.Manager.HomeAdminScreen
@@ -25,6 +27,7 @@ import com.example.coffee_manager.View.Manager.Food.UpdateFoodScreen
 import com.example.coffee_manager.View.Manager.Space.TableManagementScreen
 import com.example.coffee_manager.View.Manager.Table.TableDetailScreen
 import com.example.coffee_manager.View.Order.CartScreen
+import com.example.coffee_manager.View.Order.PaymentScreen
 import com.example.coffee_manager.View.ProfileScreen
 
 
@@ -91,6 +94,10 @@ fun AppNavigation(navController: NavHostController) {
         composable("cart") {
             CartScreen(navController)
         }
+        composable("payment") {
+            PaymentScreen(navController)
+        }
+
 
 
 

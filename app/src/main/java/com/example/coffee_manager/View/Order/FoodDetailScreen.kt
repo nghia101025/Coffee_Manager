@@ -108,12 +108,7 @@ fun FoodDetailScreen(
 
                         // Tên & Giá
                         Text(f.name, style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            "${NumberFormat.getNumberInstance(Locale("vi", "VN")).format(f.price)}₫",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-
+                        Text("${NumberFormat.getNumberInstance(Locale("vi", "VN")).format(f.price)}₫", style = MaterialTheme.typography.titleMedium)
 
                         // Category
                         Text("Danh mục: ${f.category}", style = MaterialTheme.typography.bodyMedium)

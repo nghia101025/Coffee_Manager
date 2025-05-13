@@ -88,9 +88,14 @@ fun CartScreen(navController: NavController) {
                         }₫",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Button(onClick = { /* TODO: Thanh toán */ }) {
+                    Button(onClick = {
+                        navController.currentBackStackEntry?.savedStateHandle?.set("cartItems", cartItems)
+                        navController.currentBackStackEntry?.savedStateHandle?.set("foodsMap", foodsMap)
+                        navController.navigate("payment")
+                    }) {
                         Text("Thanh toán")
                     }
+
                 }
             }
         }
