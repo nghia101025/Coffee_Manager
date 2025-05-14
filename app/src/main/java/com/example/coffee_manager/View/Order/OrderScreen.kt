@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,8 +30,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.coffee_manager.Controller.Admin.CategoryController
-import com.example.coffee_manager.Controller.Admin.FoodController
+import com.example.coffee_manager.Controller.Order.CategoryController
+import com.example.coffee_manager.Controller.Order.FoodController
 import com.example.coffee_manager.Model.Category
 import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.R
@@ -48,6 +49,9 @@ fun OrderScreen(navController: NavController) {
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+
+    // State cho tìm kiếm và chọn danh mục
+    var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Tất cả") }
 
     LaunchedEffect(Unit) {
@@ -89,10 +93,7 @@ fun OrderScreen(navController: NavController) {
                 onClick = { navController.navigate("cart") },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(
-                    imageVector = Icons.Default.ShoppingCart,
-                    contentDescription = "Xem giỏ hàng"
-                )
+                Icon(Icons.Default.ShoppingCart, contentDescription = "Xem giỏ hàng")
             }
         }
     ) { padding ->
@@ -101,17 +102,29 @@ fun OrderScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Best Sales
+            // 1. Thanh tìm kiếm
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                placeholder = { Text("Tìm kiếm món...") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+
+            // 2. Best Sales
             Text(
                 "Best Sales",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             LazyRow(
                 Modifier
                     .fillMaxWidth()
                     .height(180.dp)
-                    .padding(start = 16.dp),
+                    .padding(start = 16.dp, top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(bestSales, key = { it.idFood }) { f ->
@@ -155,7 +168,7 @@ fun OrderScreen(navController: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
-            // Categories
+            // 3. Categories
             LazyRow(
                 Modifier
                     .fillMaxWidth()
@@ -187,12 +200,17 @@ fun OrderScreen(navController: NavController) {
 
             Spacer(Modifier.height(16.dp))
 
-            // Filtered grid
-            val displayed = remember(selectedCategory, foodList) {
-                if (selectedCategory == "Tất cả") foodList
-                else foodList.filter { it.category == selectedCategory }
+            // 4. Lọc theo tìm kiếm + danh mục
+            val displayed = remember(searchQuery, selectedCategory, foodList) {
+                foodList.filter { food ->
+                    val matchesName = food.name.contains(searchQuery.trim(), ignoreCase = true)
+                    val matchesCat = selectedCategory == "Tất cả"
+                            || food.category == selectedCategory
+                    matchesName && matchesCat
+                }
             }
 
+            // 5. Hiển thị grid
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(16.dp),
@@ -241,7 +259,6 @@ fun OrderScreen(navController: NavController) {
                                     color = Color.White,
                                     style = MaterialTheme.typography.bodySmall
                                 )
-
                             }
                         }
                     }

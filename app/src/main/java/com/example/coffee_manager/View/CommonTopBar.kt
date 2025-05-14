@@ -35,7 +35,7 @@ fun CommonTopBar(
         navigationIcon = {
             IconButton(onClick = { navController.popBackStack() }) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_back), // icon quay lại
+                    painter = painterResource(id = R.drawable.ic_back),
                     contentDescription = "Back",
                     modifier = Modifier.size(24.dp)
                 )

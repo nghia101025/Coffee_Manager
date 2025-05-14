@@ -28,4 +28,7 @@ data class User(
 }
 object SessionManager {
     var currentUserId: String = ""
+    var idTable: String=""
+    var numberTable: Int?= 0
+
 }

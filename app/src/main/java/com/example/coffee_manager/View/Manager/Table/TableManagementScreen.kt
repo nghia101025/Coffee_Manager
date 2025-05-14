@@ -97,7 +97,7 @@ fun TableManagementScreen(navController: NavController) {
                                                 idTable = "",
                                                 number = num,
                                                 status = Table.Status.EMPTY,
-                                                billId = null
+                                                currentBillId = null
                                             )
                                         ).onSuccess {
                                             controller.getAllTables().onSuccess { tables = it }

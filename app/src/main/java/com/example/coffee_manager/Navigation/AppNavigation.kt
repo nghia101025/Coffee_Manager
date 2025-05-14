@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.example.coffee_manager.Model.CartItem
 import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.View.*
+import com.example.coffee_manager.View.Cashier.CashierBillScreen
 import com.example.coffee_manager.View.Manager.Food.AddFoodScreen
 import com.example.coffee_manager.View.Manager.HomeAdminScreen
 import com.example.coffee_manager.View.Manager.Employee.RegisterScreen
@@ -19,7 +20,6 @@ import com.example.coffee_manager.View.Manager.Employee.UserListScreen
 import com.example.coffee_manager.View.Chef.HomeBepScreen
 import com.example.coffee_manager.View.Order.OrderScreen
 import com.example.coffee_manager.View.Order.FoodDetailScreen
-import com.example.coffee_manager.View.Cashier.HomeThuNganScreen
 import com.example.coffee_manager.View.Manager.Employee.UpdateEmployeeScreen
 import com.example.coffee_manager.View.Manager.Food.CategoryListScreen
 import com.example.coffee_manager.View.Manager.Food.FoodListScreen
@@ -29,6 +29,9 @@ import com.example.coffee_manager.View.Manager.Table.TableDetailScreen
 import com.example.coffee_manager.View.Order.CartScreen
 import com.example.coffee_manager.View.Order.OrderSuccessScreen
 import com.example.coffee_manager.View.Order.PaymentScreen
+import com.example.coffee_manager.View.Order.TableSelectionScreen
+import com.example.coffee_manager.View.Cashier.CashierTableScreen
+import com.example.coffee_manager.View.Cashier.FinishSuccessScreen
 import com.example.coffee_manager.View.ProfileScreen
 
 
@@ -41,7 +44,6 @@ fun AppNavigation(navController: NavHostController) {
         // Các màn hình Home theo từng vai trò
         composable("home_admin") { HomeAdminScreen(navController) }
         composable("home_order") { OrderScreen(navController) }
-        composable("home_thungan") { HomeThuNganScreen(navController) }
         composable("home_bep") { HomeBepScreen(navController) }
 
         // Admin
@@ -107,12 +109,52 @@ fun AppNavigation(navController: NavHostController) {
             val orderId = backStack.arguments?.getString("orderId") ?: ""
             OrderSuccessScreen(orderId = orderId, navController = navController)
         }
+        composable("table_select") {
+            TableSelectionScreen(navController)
+        }
 
+        // Thu ngân
+        // Trong NavHost
+        composable("home_thungan") {
+            CashierTableScreen(
+                navController = navController,
+                onTableSelected = {
+                    navController.navigate("home_order")
+                },
+                onTableOccupied = { tableId, billId,tableNumber ->
+                    navController.navigate("cashier_bill/$tableId/$billId/$tableNumber")
+                }
+            )
+        }
 
+        // Định nghĩa màn hiển thị hoá đơn cho nhân viên thu ngân
+        composable(
+            "cashier_bill/{tableId}/{billId}/{tableNumber}",
+            arguments = listOf(
+                navArgument("tableId") { type = NavType.StringType },
+                navArgument("billId")  { type = NavType.StringType },
+                navArgument("tableNumber")  { type = NavType.IntType }
 
+            )
+        ) { backStackEntry ->
+            val tableId = backStackEntry.arguments!!.getString("tableId")!!
+            val billId  = backStackEntry.arguments!!.getString("billId")!!
+            val tableNumber  = backStackEntry.arguments!!.getInt("tableNumber")
 
-
-
+            CashierBillScreen(
+                navController = navController,
+                tableId = tableId,
+                billId = billId,
+                tableNumber = tableNumber
+            )
+        }
+        composable(
+            "finish_success/{billId}",
+            arguments = listOf(navArgument("billId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val billId = backStackEntry.arguments!!.getString("billId")!!
+            FinishSuccessScreen(navController, billId)
+        }
 
     }
 }

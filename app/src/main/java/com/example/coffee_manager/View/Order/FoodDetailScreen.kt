@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.coffee_manager.Controller.Admin.FoodController
+import com.example.coffee_manager.Controller.Order.FoodController
 import com.example.coffee_manager.Controller.Order.BillController
 import com.example.coffee_manager.Model.Food
 import kotlinx.coroutines.Dispatchers

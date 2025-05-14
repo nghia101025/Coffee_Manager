@@ -113,7 +113,7 @@ fun TableDetailScreen(navController: NavController, tableId: String) {
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = "Hóa đơn: ${tbl.billId}" ?: "",
+                            text = "Hóa đơn: ${tbl.currentBillId}" ?: "",
                             style = MaterialTheme.typography.bodyMedium
                         )
 

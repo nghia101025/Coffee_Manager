@@ -1,8 +1,13 @@
 package com.example.coffee_manager.Controller.Admin
 
+import android.content.ContentValues.TAG
+import android.util.Log
 import com.example.coffee_manager.Model.SessionManager
 import com.example.coffee_manager.Model.Table
+import com.example.coffee_manager.Model.User
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 class TableController {
@@ -106,22 +111,4 @@ class TableController {
         }
     }
 
-    suspend fun getTableStatus(tableId: String): String {
-        val doc = tablesCollection.document(tableId).get().await()
-        if (!doc.exists()) {
-            // Không ném nữa, mà coi như bàn trống
-            return "EMPTY"
-        }
-        return doc.getString("status")
-            ?: throw Exception("Bàn $tableId đã có document nhưng thiếu field 'status'")
-    }
-
-    /**
-     * Cập nhật trạng thái bàn (tạo document nếu chưa có).
-     */
-    suspend fun updateTableStatus(tableId: String, newStatus: String) = runCatching {
-        tablesCollection.document(tableId)
-            .set(mapOf("status" to newStatus))
-            .await()
-    }
 }
