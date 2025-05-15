@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.coffee_manager"
-        minSdk = 24
+        minSdk = 25
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.navigation.runtime.android)
+    implementation(libs.androidx.compose.material)
     dependencies {
 
         implementation(libs.navigation.compose)
@@ -91,6 +92,8 @@ dependencies {
         implementation("androidx.navigation:navigation-compose:2.6.0")
         implementation ("io.coil-kt:coil-compose:2.4.0")
         implementation ("androidx.compose.material:material-icons-extended:1.6.0")
+        implementation ("androidx.compose.material3:material3-window-size-class:1.1.0")
+
 
 
     }

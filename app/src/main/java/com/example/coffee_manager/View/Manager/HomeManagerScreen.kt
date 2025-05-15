@@ -81,9 +81,9 @@ fun HomeAdminScreen(navController: NavController) {
                 FeatureItem(
                     "Doanh thu",
                     { Icon(Icons.Default.AttachMoney, null) },
-                    "manager_revenue"
+                    "statistics"
                 ),
-                FeatureItem("Hóa đơn", { Icon(Icons.Default.ReceiptLong, null) }, "manager_bill")
+                FeatureItem("Hóa đơn", { Icon(Icons.Default.ReceiptLong, null) }, "bill_list")
             )
         )
     )
@@ -104,9 +104,10 @@ fun HomeAdminScreen(navController: NavController) {
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Spacer(Modifier.height(50.dp))
             featureSections.forEach { section ->
                 Text(section.sectionTitle, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(26.dp))
+                Spacer(Modifier.height(16.dp))
                 val horizontalScroll = rememberScrollState()
 
                 Row(

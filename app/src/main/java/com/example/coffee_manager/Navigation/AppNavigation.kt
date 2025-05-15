@@ -32,7 +32,10 @@ import com.example.coffee_manager.View.Order.PaymentScreen
 import com.example.coffee_manager.View.Order.TableSelectionScreen
 import com.example.coffee_manager.View.Cashier.CashierTableScreen
 import com.example.coffee_manager.View.Cashier.FinishSuccessScreen
+import com.example.coffee_manager.View.Order.BillListScreen
 import com.example.coffee_manager.View.ProfileScreen
+import com.example.coffee_manager.View.Statistics.StatisticsScreen
+import com.example.coffee_manager.View.Statistics.BillDetailScreen
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -113,8 +116,23 @@ fun AppNavigation(navController: NavHostController) {
             TableSelectionScreen(navController)
         }
 
+        // Admin
+        composable("statistics") {
+            StatisticsScreen(navController)
+        }
+        // bills list
+        composable("bill_List") { BillListScreen(navController) }
+        composable(
+            "billDetail/{billId}",
+            arguments = listOf(navArgument("billId") { type = NavType.StringType })
+        ) { back ->
+            val billId = back.arguments?.getString("billId")!!
+            BillDetailScreen(navController, billId)
+        }
+
+
+
         // Thu ngân
-        // Trong NavHost
         composable("home_thungan") {
             CashierTableScreen(
                 navController = navController,
