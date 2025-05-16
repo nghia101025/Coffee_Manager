@@ -35,7 +35,7 @@ import com.example.coffee_manager.Model.FeatureItem
 import com.example.coffee_manager.Model.FeatureSection
 import com.example.coffee_manager.R
 import androidx.compose.material.icons.filled.LocalOffer
-
+import androidx.compose.material.icons.filled.QrCodeScanner
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +58,7 @@ fun HomeAdminScreen(navController: NavController) {
             items = listOf(
                 FeatureItem("Thêm thực đơn", { Icon(Icons.Default.Fastfood, null) }, "add_food"),
                 FeatureItem(
-                    "Danh sách thực đơn",
+                    "DS thực đơn",
                     { Icon(Icons.Default.ViewList, null) },
                     "food_list"
                 ),
@@ -88,8 +88,13 @@ fun HomeAdminScreen(navController: NavController) {
                     "bill_list"),
                 FeatureItem("Khuyến mãi",
                     { Icon(Icons.Default.LocalOffer, null) },
-                    "promotions")
-            )
+                    "promotions"),
+                FeatureItem("QR",
+                    { Icon(Icons.Default.QrCodeScanner, null) },
+                    "qr")
+
+            ),
+
         )
     )
     Scaffold(

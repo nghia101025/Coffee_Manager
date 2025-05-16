@@ -32,4 +32,5 @@ class PromotionController {
     suspend fun deletePromotion(id: String): Result<Unit> = runCatching {
         col.document(id).delete().await()
     }
+
 }

@@ -22,8 +22,6 @@ class BillController {
     // Trong BillController.kt
     suspend fun updateBill(bill: Bill): Result<Unit> {
         return try {
-            // Gửi bill đã cập nhật lên Firebase hoặc server
-            // update logic tại đây
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

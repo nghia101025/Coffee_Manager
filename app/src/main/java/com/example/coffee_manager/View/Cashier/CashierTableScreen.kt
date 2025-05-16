@@ -11,10 +11,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,7 +45,7 @@ import kotlinx.coroutines.launch
 fun CashierTableScreen(
     navController: NavController,
     onTableSelected: (tableId: String) -> Unit,
-    onTableOccupied: (tableId: String, billId: String,tableNumber:Int) -> Unit
+    onTableOccupied: (tableId: String, billId: String, tableNumber: Int) -> Unit
 ) {
     val TAG = "CashierTableScreen"
     val tableController = remember { TableController() }
@@ -51,13 +55,20 @@ fun CashierTableScreen(
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    // Load danh sách bàn
+    // Hàm để load data
+    fun loadTables() {
+        scope.launch {
+            loading = true
+            tableController.getAllTables()
+                .onSuccess { tables = it }
+                .onFailure { message = it.message }
+            loading = false
+        }
+    }
+
+    // Load lần đầu
     LaunchedEffect(Unit) {
-        loading = true
-        tableController.getAllTables()
-            .onSuccess { tables = it }
-            .onFailure { message = it.message }
-        loading = false
+        loadTables()
     }
 
     Scaffold(
@@ -74,6 +85,17 @@ fun CashierTableScreen(
                     }
                 },
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { loadTables() },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Tải lại danh sách bàn"
+                )
+            }
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
@@ -88,41 +110,32 @@ fun CashierTableScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(tables, key = { it.idTable }) { table ->
-                        // Chọn màu theo trạng thái
                         val bg = when (table.status) {
                             Table.Status.EMPTY    -> Color(0xFFB8E986)
                             Table.Status.OCCUPIED -> Color(0xFFFFD966)
-                            Table.Status.DAMAGED -> Color.Red
+                            Table.Status.DAMAGED  -> Color.Red
                         }
                         Card(
                             modifier = Modifier
                                 .aspectRatio(1f)
                                 .clickable {
                                     if (table.status == Table.Status.EMPTY) {
-                                        Log.d(TAG, "Bấm bàn trống: idTable=${table.idTable}, number=${table.number}")
                                         onTableSelected(table.idTable)
                                         SessionManager.idTable = table.idTable
                                         SessionManager.numberTable = table.number
-
                                     } else {
                                         table.currentBillId?.let { billId ->
-                                            Log.d(
-                                                TAG,
-                                                "Bấm bàn có khách: idTable=${table.idTable}, billId=$billId"
-                                            )
-                                            onTableOccupied(table.idTable, billId,table.number)
-                                        } ?: run {
-                                            Log.w(TAG, "Bàn OCCUPIED nhưng currentBillId == null (idTable=${table.idTable})")
+                                            onTableOccupied(table.idTable, billId, table.number)
                                         }
                                     }
                                 },
                             colors = CardDefaults.cardColors(containerColor = bg),
                             shape = RoundedCornerShape(8.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                            elevation = CardDefaults.cardElevation(4.dp)
                         ) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "Bàn ${table.number}",
+                                    "Bàn ${table.number}",
                                     style = MaterialTheme.typography.titleMedium,
                                     textAlign = TextAlign.Center
                                 )

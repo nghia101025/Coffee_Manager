@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -45,7 +46,16 @@ fun PromotionListScreen(navController: NavController) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Quản lý khuyến mãi") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Khuyến mãi") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigate("home_admin") }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 editingPromo = null

@@ -25,8 +25,8 @@ class BillController {
         bills.document(billId)
             .update(
                 mapOf(
-                    "isPaid" to true,
-                    "isProcessed" to true,
+                    "paid" to true,
+                    "processed" to true,
                     "finish" to true,
                     "dateFinish" to now
                 )

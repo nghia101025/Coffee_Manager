@@ -36,6 +36,7 @@ import com.example.coffee_manager.View.Statistics.StatisticsScreen
 import com.example.coffee_manager.View.Statistics.BillDetailScreen
 import com.example.coffee_manager.View.Brewing.BrewingBillDetailScreen
 import com.example.coffee_manager.View.Manager.Promotion.PromotionListScreen
+import com.example.coffee_manager.View.Manager.Qr.QrScreen
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -61,7 +62,9 @@ fun AppNavigation(navController: NavHostController) {
         composable("promotions") {
             PromotionListScreen(navController)
         }
-
+        composable("qr") {
+            QrScreen(navController = navController)
+        }
 
         composable("statistics") {
             StatisticsScreen(navController)
