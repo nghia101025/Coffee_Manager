@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.coffee_manager.Model.SessionManager
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,8 +37,14 @@ fun OrderSuccessScreen(orderId: String, navController: NavController) {
                 Text("Mã đơn: $orderId", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = {
-                    navController.navigate("home_order") {
-                        popUpTo("orderSuccess/$orderId") { inclusive = true }
+                    if(SessionManager.role == "Phục vụ"){
+                        navController.navigate("home_order") {
+                            popUpTo("orderSuccess/$orderId") { inclusive = true }
+                        }
+                    }else{
+                        navController.navigate("home_thungan") {
+                            popUpTo("orderSuccess/$orderId") { inclusive = true }
+                        }
                     }
                 }) { Text("Quay về Menu") }
             }

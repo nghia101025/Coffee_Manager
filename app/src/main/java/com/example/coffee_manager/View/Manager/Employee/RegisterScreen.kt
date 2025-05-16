@@ -330,7 +330,7 @@ fun RegisterScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoleDropdown(selectedRole: String, onRoleSelected: (String) -> Unit) {
-    val roles = listOf("Quản lý", "Đầu bếp", "Phục vụ", "Thu Ngân")
+    val roles = listOf("Quản lý", "Pha chế", "Phục vụ", "Thu Ngân")
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(

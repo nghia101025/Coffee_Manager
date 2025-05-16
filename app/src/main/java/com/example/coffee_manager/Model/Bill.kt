@@ -20,8 +20,8 @@ data class Bill(
     val note: String = "",
     val discountPercent: Int = 0,
     val totalPrice: Long = 0L,
-    val isPaid: Boolean = false,
-    val isProcessed: Boolean = false,
+    val paid: Boolean = false,
+    val processed: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 ) {
 

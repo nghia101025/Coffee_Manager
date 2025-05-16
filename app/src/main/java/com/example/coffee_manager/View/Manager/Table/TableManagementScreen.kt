@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,7 +48,16 @@ fun TableManagementScreen(navController: NavController) {
     }
 
     Scaffold(
-        topBar = { CommonTopBar(navController, title = "Quản lý không gian") },
+        topBar = {
+            TopAppBar(
+                title = { Text("Quản lý không gian") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigate("home_admin") }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Thêm bàn")

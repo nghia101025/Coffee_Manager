@@ -9,15 +9,13 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.coffee_manager.Model.CartItem
-import com.example.coffee_manager.Model.Food
 import com.example.coffee_manager.View.*
+import com.example.coffee_manager.View.Brewing.BrewingScreen
 import com.example.coffee_manager.View.Cashier.CashierBillScreen
 import com.example.coffee_manager.View.Manager.Food.AddFoodScreen
 import com.example.coffee_manager.View.Manager.HomeAdminScreen
 import com.example.coffee_manager.View.Manager.Employee.RegisterScreen
 import com.example.coffee_manager.View.Manager.Employee.UserListScreen
-import com.example.coffee_manager.View.Chef.HomeBepScreen
 import com.example.coffee_manager.View.Order.OrderScreen
 import com.example.coffee_manager.View.Order.FoodDetailScreen
 import com.example.coffee_manager.View.Manager.Employee.UpdateEmployeeScreen
@@ -36,6 +34,8 @@ import com.example.coffee_manager.View.Order.BillListScreen
 import com.example.coffee_manager.View.ProfileScreen
 import com.example.coffee_manager.View.Statistics.StatisticsScreen
 import com.example.coffee_manager.View.Statistics.BillDetailScreen
+import com.example.coffee_manager.View.Brewing.BrewingBillDetailScreen
+import com.example.coffee_manager.View.Manager.Promotion.PromotionListScreen
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -47,7 +47,7 @@ fun AppNavigation(navController: NavHostController) {
         // Các màn hình Home theo từng vai trò
         composable("home_admin") { HomeAdminScreen(navController) }
         composable("home_order") { OrderScreen(navController) }
-        composable("home_bep") { HomeBepScreen(navController) }
+        composable("home_brewing") { BrewingScreen(navController) }
 
         // Admin
         composable("add_food") { AddFoodScreen(navController) }
@@ -58,6 +58,22 @@ fun AppNavigation(navController: NavHostController) {
         composable("table_list") { TableManagementScreen(navController) }
         composable("category_list") { CategoryListScreen(navController) }
         composable("profile") { ProfileScreen(navController) }
+        composable("promotions") {
+            PromotionListScreen(navController)
+        }
+
+
+        composable("statistics") {
+            StatisticsScreen(navController)
+        }
+        composable("bill_List") { BillListScreen(navController) }
+        composable(
+            "billDetail/{billId}",
+            arguments = listOf(navArgument("billId") { type = NavType.StringType })
+        ) { back ->
+            val billId = back.arguments?.getString("billId")!!
+            BillDetailScreen(navController, billId)
+        }
 
 
         composable(
@@ -116,19 +132,6 @@ fun AppNavigation(navController: NavHostController) {
             TableSelectionScreen(navController)
         }
 
-        // Admin
-        composable("statistics") {
-            StatisticsScreen(navController)
-        }
-        // bills list
-        composable("bill_List") { BillListScreen(navController) }
-        composable(
-            "billDetail/{billId}",
-            arguments = listOf(navArgument("billId") { type = NavType.StringType })
-        ) { back ->
-            val billId = back.arguments?.getString("billId")!!
-            BillDetailScreen(navController, billId)
-        }
 
 
 
@@ -144,8 +147,6 @@ fun AppNavigation(navController: NavHostController) {
                 }
             )
         }
-
-        // Định nghĩa màn hiển thị hoá đơn cho nhân viên thu ngân
         composable(
             "cashier_bill/{tableId}/{billId}/{tableNumber}",
             arguments = listOf(
@@ -172,6 +173,21 @@ fun AppNavigation(navController: NavHostController) {
         ) { backStackEntry ->
             val billId = backStackEntry.arguments!!.getString("billId")!!
             FinishSuccessScreen(navController, billId)
+        }
+
+        // Brewing
+        // 2. Chi tiết 1 đơn pha chế
+        composable(
+            route = "brewing_detail/{billId}",
+            arguments = listOf(navArgument("billId") {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val billId = backStackEntry.arguments!!.getString("billId")!!
+            BrewingBillDetailScreen(
+                navController = navController,
+                billId = billId
+            )
         }
 
     }

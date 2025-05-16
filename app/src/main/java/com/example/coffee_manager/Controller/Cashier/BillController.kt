@@ -13,8 +13,8 @@ class BillController {
         val doc = bills.document()
         val toSave = bill.copy(
             idBill = doc.id,
-            isPaid = false,
-            isProcessed = false
+            paid = true,
+            processed = false
         )
         doc.set(toSave).await()
         doc.id

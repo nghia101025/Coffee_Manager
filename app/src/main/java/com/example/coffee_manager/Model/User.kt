@@ -30,5 +30,6 @@ object SessionManager {
     var currentUserId: String = ""
     var idTable: String=""
     var numberTable: Int?= 0
+    var role: String = ""
 
 }

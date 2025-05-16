@@ -47,6 +47,7 @@ class LoginController {
                                 // Lưu idUser để dùng sau
                                 SessionManager.currentUserId = doc.id
                                 val role = doc.getString("role") ?: "Order"
+                                SessionManager.role = role
                                 onSuccess(role)
                             } else {
                                 onFailure("Không tìm thấy thông tin người dùng.")

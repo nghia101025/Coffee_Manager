@@ -34,7 +34,7 @@ import androidx.navigation.NavController
 import com.example.coffee_manager.Model.FeatureItem
 import com.example.coffee_manager.Model.FeatureSection
 import com.example.coffee_manager.R
-import com.example.coffee_manager.View.CommonTopBar
+import androidx.compose.material.icons.filled.LocalOffer
 
 
 
@@ -83,7 +83,12 @@ fun HomeAdminScreen(navController: NavController) {
                     { Icon(Icons.Default.AttachMoney, null) },
                     "statistics"
                 ),
-                FeatureItem("Hóa đơn", { Icon(Icons.Default.ReceiptLong, null) }, "bill_list")
+                FeatureItem("Hóa đơn",
+                    { Icon(Icons.Default.ReceiptLong, null) },
+                    "bill_list"),
+                FeatureItem("Khuyến mãi",
+                    { Icon(Icons.Default.LocalOffer, null) },
+                    "promotions")
             )
         )
     )

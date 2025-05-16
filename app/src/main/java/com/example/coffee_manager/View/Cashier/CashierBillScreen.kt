@@ -61,7 +61,7 @@ fun CashierBillScreen(
         },
         bottomBar = {
             bill?.let { b ->
-                if (!b.isPaid || !b.isProcessed) {
+                if (!b.paid || !b.processed) {
                     Button(
                         onClick = {
                             scope.launch {
@@ -71,8 +71,6 @@ fun CashierBillScreen(
 
                                 tableController.clearTable(tableId)
                                     .onFailure { message = "Lỗi xoá bàn: ${it.message}" }
-
-                                // refresh hoá đơn để cập nhật finish & dateFinish
                                 billController.getBill(billId)
                                     .onSuccess { bill = it }
 
@@ -145,7 +143,7 @@ fun CashierBillScreen(
                     }
                     Text("Phương thức: ${b.note}", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        "Paid: ${b.isPaid} • Processed: ${b.isProcessed}",
+                        "Paid: ${b.paid} • Processed: ${b.processed}",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

@@ -127,8 +127,8 @@ fun PaymentScreen(
                                 note = method,
                                 discountPercent = discountPct,
                                 totalPrice = totalPrice,
-                                isPaid = true,       // đã thanh toán
-                                isProcessed = false
+                                paid = true,       // đã thanh toán
+                                processed = false
                             )
                             billController.createBill(bill).fold(onSuccess = { bid ->
                                 // 5) Đánh dấu bàn OCCUPIED

@@ -1,3 +1,4 @@
+// View/Statistics/BillDetailScreen.kt
 package com.example.coffee_manager.View.Statistics
 
 import android.annotation.SuppressLint
@@ -16,9 +17,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.coffee_manager.Controller.Admin.TableController
 import com.example.coffee_manager.Controller.Cashier.BillController
 import com.example.coffee_manager.Model.Bill
 import com.example.coffee_manager.Model.BillItem
+import com.example.coffee_manager.Model.Table
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -26,43 +29,75 @@ import java.util.*
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun BillDetailScreen(navController: NavController, billId: String) {
-    val controller = remember { BillController() }
+    val billCtrl = remember { BillController() }
+    val tableCtrl = remember { TableController() }
+
     var bill by remember { mutableStateOf<Bill?>(null) }
+    var table by remember { mutableStateOf<Table?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    // 1) Lấy hoá đơn
     LaunchedEffect(billId) {
         isLoading = true
-        controller.getBill(billId)
-            .onSuccess { bill = it }
-            .onFailure { error = it.message }
+        billCtrl.getBill(billId)
+            .onSuccess { fetched ->
+                bill = fetched
+                // 2) Khi có bill, lấy bàn
+                tableCtrl.getTableById(fetched.idTable)
+                    .onSuccess { tbl -> table = tbl }
+                    .onFailure { ex -> error = "Không tải được bàn: ${ex.message}" }
+            }
+            .onFailure { ex ->
+                error = "Không tải được hoá đơn: ${ex.message}"
+            }
         isLoading = false
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = "Hóa đơn ${bill?.idBill ?: "..."}") },
+                title = { Text(text = "Hoá đơn ${bill?.idBill ?: ""}") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
                     }
                 }
             )
         }
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(it)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(it)
+        ) {
             when {
-                isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                error != null -> Text(text = "Lỗi: $error", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
-                bill != null -> BillDetailContent(bill!!)
+                isLoading -> {
+                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                }
+                error != null -> {
+                    Text(
+                        text = error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                bill != null && table != null -> {
+                    BillDetailContent(bill = bill!!, table = table!!)
+                }
+                else -> {
+                    Text(
+                        text = "Không tìm thấy dữ liệu",
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun BillDetailContent(bill: Bill) {
+fun BillDetailContent(bill: Bill, table: Table) {
     val sdf = SimpleDateFormat("dd 'thg' M, yyyy HH:mm", Locale.getDefault())
     Column(
         modifier = Modifier
@@ -70,37 +105,39 @@ fun BillDetailContent(bill: Bill) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Table and date
+        // Header: bàn, thời gian, trạng thái
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(text = "Bàn: ${bill.idTable}", style = MaterialTheme.typography.bodyLarge)
-                Text(text = "Ngày tạo: ${sdf.format(Date(bill.createdAt))}", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "Bàn: ${table.number}",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "Ngày tạo: ${sdf.format(Date(bill.createdAt))}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
-            // Status chips
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (bill.isProcessed) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text("Đã xử lý") }
-                    )
+                if (bill.processed) {
+                    AssistChip(onClick = {}, label = { Text("Đã xử lý") })
                 }
-                if (bill.isPaid) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text("Đã thanh toán") }
-                    )
+                if (bill.paid) {
+                    AssistChip(onClick = {}, label = { Text("Đã thanh toán") })
                 }
             }
         }
-
         Divider()
 
-        // Items list
-        Text(text = "Mặt hàng", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        // Danh sách mặt hàng
+        Text(
+            text = "Mặt hàng",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
         LazyColumn(
             Modifier
                 .fillMaxWidth()
@@ -114,15 +151,18 @@ fun BillDetailContent(bill: Bill) {
 
         Divider()
 
-        // Notes
+        // Ghi chú (nếu có)
         if (bill.note.isNotBlank()) {
-            Text(text = "Ghi chú", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = "Ghi chú",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
             Text(text = bill.note, style = MaterialTheme.typography.bodyMedium)
+            Divider()
         }
 
-        Divider()
-
-        // Discount and total
+        // Tổng tiền
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -134,8 +174,16 @@ fun BillDetailContent(bill: Bill) {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Tổng cộng", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(text = "%.0fđ".format(bill.totalPrice.toDouble()), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "Tổng cộng",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${bill.totalPrice}₫",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -148,6 +196,9 @@ fun BillItemRow(item: BillItem) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
-        Text(text = "x ${item.quantity}   ${item.price}đ", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = "x${item.quantity}   ${item.price}₫",
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }

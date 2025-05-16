@@ -132,11 +132,11 @@ private fun BillItemCard(bill: Bill, onClick: () -> Unit) {
                 Text(text = bill.note, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (bill.isProcessed) AssistChip(
+                    if (bill.processed) AssistChip(
                         onClick = { /* no-op */ },
                         label = { Text("Đã xử lý") }
                     )
-                    if (bill.isPaid) FilterChip(
+                    if (bill.paid) FilterChip(
                         selected = true,
                         onClick = { /* no-op */ },
                         label = { Text("Đã thanh toán") }

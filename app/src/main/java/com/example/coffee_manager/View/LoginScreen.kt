@@ -65,7 +65,7 @@ fun LoginScreen(navController: NavController) {
                     "quản lý"     -> navController.navigate("home_admin")
                     "phục vụ"     -> navController.navigate("home_order")
                     "thu ngân"  -> navController.navigate("home_thungan")
-                    "đầu bếp"   -> navController.navigate("home_bep")
+                    "pha chế"   -> navController.navigate("home_brewing")
                     else        -> {
                         Log.w(TAG, "Unknown role received: $role")
                         navController.navigate("login") // fallback

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -56,17 +57,20 @@ fun TableDetailScreen(navController: NavController, tableId: String) {
     var message by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
-    // Load thông tin
+    // 1. Load thông tin bàn
     LaunchedEffect(tableId) {
         controller.getTableById(tableId)
             .onSuccess { table = it }
-            .onFailure { message = "Không tải được thông tin"; showMsg = true }
+            .onFailure {
+                message = "Không tải được thông tin"
+                showMsg = true
+            }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chi tiết Bàn #${table?.number ?: ""}") },
+                title = { Text("Chi tiết bàn #${table?.number ?: ""}") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
@@ -74,7 +78,7 @@ fun TableDetailScreen(navController: NavController, tableId: String) {
                 },
                 actions = {
                     IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Xoá bàn", tint = Color.Red)
+                        Icon(Icons.Default.Delete, contentDescription = "Xóa bàn", tint = Color.Red)
                     }
                 }
             )
@@ -82,161 +86,130 @@ fun TableDetailScreen(navController: NavController, tableId: String) {
     ) { padding ->
         table?.let { tbl ->
             Column(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // CARD THÔNG TIN CHUNG
+                // Thông tin cơ bản
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(8.dp)
                 ) {
                     Column(
-                        modifier = Modifier
+                        Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        Text("Bàn số ${tbl.number}", style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            text = "Bàn số ${tbl.number}",
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                        Text(
-                            text = when (tbl.status) {
-                                Table.Status.EMPTY    -> "Trạng thái: Trống"
-                                Table.Status.OCCUPIED -> "Trạng thái: Có khách"
-                                Table.Status.DAMAGED  -> "Trạng thái: Hỏng"
-                            },
+                            "Trạng thái: ${
+                                when (tbl.status) {
+                                    Table.Status.EMPTY    -> "Trống"
+                                    Table.Status.OCCUPIED -> "Có khách"
+                                    Table.Status.DAMAGED  -> "Hỏng"
+                                }
+                            }",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = "Hóa đơn: ${tbl.currentBillId}" ?: "",
+                            text = "Hoá đơn hiện tại: ${tbl.currentBillId ?: "–"}",
                             style = MaterialTheme.typography.bodyMedium
                         )
-
                     }
+                }
 
-                    // NÚT CHỨC NĂNG
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                // Nút chức năng theo trạng thái
+                when (tbl.status) {
+                    Table.Status.EMPTY -> {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    controller.updateTableStatusByNumber(
+                                        tbl.number,
+                                        Table.Status.DAMAGED
+                                    ).onSuccess {
+                                        message = "Đã báo bàn #${tbl.number} hỏng"
+                                        showMsg = true
+                                        navController.navigate("table_list")
+
+                                    }.onFailure {
+                                        message = it.message ?: "Lỗi"
+                                        showMsg = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            when (tbl.status) {
-                                Table.Status.EMPTY -> {
-                                    ExtendedFloatingActionButton(
-                                        onClick = {
-                                            message = "Gọi món cho bàn ${tbl.number}"
-                                            showMsg = true
-                                        },
-                                        icon = { Icon(Icons.Default.Fastfood, contentDescription = null) },
-                                        text = { Text("Gọi món") }
-                                    )
-                                    IconButton(onClick = {
-                                        scope.launch {
-                                            controller.updateTableStatusByNumber(tbl.number, Table.Status.DAMAGED)
-                                                .onSuccess {
-                                                    message = "Đã báo hỏng bàn"
-                                                    showMsg = true
-                                                }
-                                                .onFailure {
-                                                    message = it.message ?: "Lỗi"
-                                                    showMsg = true
-                                                }
-                                        }
-                                    }) {
-                                        Icon(Icons.Default.Build, contentDescription = "Báo hỏng", tint = Color.Red)
-                                    }
-                                }
-                                Table.Status.OCCUPIED -> {
-                                    ExtendedFloatingActionButton(
-                                        onClick = {
-                                            message = "Thanh toán bàn ${tbl.number}"
-                                            showMsg = true
-                                        },
-                                        icon = { Icon(Icons.Default.Payment, contentDescription = null) },
-                                        text = { Text("Thanh toán") }
-                                    )
-                                    IconButton(onClick = {
-                                        scope.launch {
-                                            controller.updateTableStatusByNumber(tbl.number, Table.Status.DAMAGED)
-                                                .onSuccess {
-                                                    message = "Đã báo hỏng bàn"
-                                                    showMsg = true
-                                                }
-                                                .onFailure {
-                                                    message = it.message ?: "Lỗi"
-                                                    showMsg = true
-                                                }
-                                        }
-                                    }) {
-                                        Icon(Icons.Default.Build, contentDescription = "Báo hỏng", tint = Color.Red)
-                                    }
-                                }
-                                Table.Status.DAMAGED -> {
-                                    ExtendedFloatingActionButton(
-                                        onClick = {
-                                            scope.launch {
-                                                controller.updateTableStatusByNumber(tbl.number, Table.Status.EMPTY)
-                                                    .onSuccess {
-                                                        message = "Hoàn tất sửa chữa"
-                                                        showMsg = true
-                                                    }
-                                                    .onFailure {
-                                                        message = it.message ?: "Lỗi"
-                                                        showMsg = true
-                                                    }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Default.Build, contentDescription = null) },
-                                        text = { Text("Hoàn tất sửa") },
-                                        containerColor = Color(0xFFFF9800)
-                                    )
-                                }
-                            }
+                            Icon(Icons.Default.Build, contentDescription = "Báo hỏng")
+                            Spacer(Modifier.width(8.dp))
+                            Text("Báo hỏng bàn")
                         }
                     }
+                    Table.Status.DAMAGED -> {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    controller.updateTableStatusByNumber(
+                                        tbl.number,
+                                        Table.Status.EMPTY
+                                    ).onSuccess {
+                                        message = "Đã hoàn tất sửa bàn #${tbl.number}"
+                                        showMsg = true
+                                        navController.navigate("table_list")
+                                    }.onFailure {
+                                        message = it.message ?: "Lỗi"
+                                        showMsg = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Fastfood, contentDescription = "Hoàn tất sửa")
+                            Spacer(Modifier.width(8.dp))
+                            Text("Hoàn tất sửa bàn")
+                        }
+                    }
+                    Table.Status.OCCUPIED -> {
+                        // không hiển thị nút nào
+                    }
+                }
+
+                // Hiện popup thông báo
+                PopupMessage(show = showMsg, message = message) { showMsg = false }
+
+                // Xác nhận xóa bàn
+                if (showDeleteDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDeleteDialog = false },
+                        title = { Text("Xác nhận xóa") },
+                        text = { Text("Bạn có chắc chắn muốn xóa bàn này?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    controller.deleteTable(tableId)
+                                        .onSuccess { navController.popBackStack() }
+                                        .onFailure {
+                                            message = "Lỗi xóa bàn: ${it.message}"
+                                            showMsg = true
+                                        }
+                                }
+                                showDeleteDialog = false
+                            }) {
+                                Text("Xóa", color = Color.Red)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDeleteDialog = false }) {
+                                Text("Hủy")
+                            }
+                        }
+                    )
                 }
             }
         }
-
-        // Popup thông báo
-        PopupMessage(show = showMsg, message = message, onDismiss = { showMsg = false })
-
-        // Xác nhận xóa bàn
-        if (showDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Xác nhận xóa") },
-                text = { Text("Bạn có chắc chắn muốn xóa bàn này?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        scope.launch {
-                            controller.deleteTable(tableId)
-                                .onSuccess { navController.popBackStack() }
-                                .onFailure {
-                                    message = "Lỗi xóa bàn: ${it.message}"
-                                    showMsg = true
-                                }
-                        }
-                        showDeleteDialog = false
-                    }) { Text("Xóa", color = Color.Red) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) { Text("Hủy") }
-                }
-            )
-        }
     }
 }
-
