@@ -1,4 +1,4 @@
-package com.example.coffee_manager.Controller.Brewing
+package com.example.coffee_manager.Controller.Barista
 
 import com.example.coffee_manager.Model.Table
 import com.google.firebase.firestore.FirebaseFirestore

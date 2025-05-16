@@ -8,7 +8,7 @@ data class Food(
     val name: String,
     val recipe: String,
     val price: Long,
-    val isAvailable: Boolean = true,
+    val available: Boolean = true,
     val imageUrl: String = "",
     val category: String, // Dùng model Category
     val soldCount: Long = 0L
@@ -19,7 +19,7 @@ data class Food(
         name = "",
         recipe = "",
         price = 0L,
-        isAvailable = true,
+        available = true,
         imageUrl = "",
         category = "",
         soldCount = 0L

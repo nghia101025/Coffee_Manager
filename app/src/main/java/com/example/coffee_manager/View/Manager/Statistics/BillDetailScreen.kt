@@ -1,7 +1,9 @@
-// View/Statistics/BillDetailScreen.kt
 package com.example.coffee_manager.View.Statistics
 
 import android.annotation.SuppressLint
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -25,8 +30,8 @@ import com.example.coffee_manager.Model.Table
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BillDetailScreen(navController: NavController, billId: String) {
     val billCtrl = remember { BillController() }
@@ -37,13 +42,11 @@ fun BillDetailScreen(navController: NavController, billId: String) {
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    // 1) Lấy hoá đơn
     LaunchedEffect(billId) {
         isLoading = true
         billCtrl.getBill(billId)
             .onSuccess { fetched ->
                 bill = fetched
-                // 2) Khi có bill, lấy bàn
                 tableCtrl.getTableById(fetched.idTable)
                     .onSuccess { tbl -> table = tbl }
                     .onFailure { ex -> error = "Không tải được bàn: ${ex.message}" }
@@ -99,13 +102,14 @@ fun BillDetailScreen(navController: NavController, billId: String) {
 @Composable
 fun BillDetailContent(bill: Bill, table: Table) {
     val sdf = SimpleDateFormat("dd 'thg' M, yyyy HH:mm", Locale.getDefault())
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Header: bàn, thời gian, trạng thái
+        // Header
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -122,17 +126,13 @@ fun BillDetailContent(bill: Bill, table: Table) {
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (bill.processed) {
-                    AssistChip(onClick = {}, label = { Text("Đã xử lý") })
-                }
-                if (bill.paid) {
-                    AssistChip(onClick = {}, label = { Text("Đã thanh toán") })
-                }
+                if (bill.processed) AssistChip(onClick = {}, label = { Text("Đã xử lý") })
+                if (bill.paid) AssistChip(onClick = {}, label = { Text("Đã thanh toán") })
             }
         }
         Divider()
 
-        // Danh sách mặt hàng
+        // Items
         Text(
             text = "Mặt hàng",
             style = MaterialTheme.typography.titleMedium,
@@ -148,10 +148,31 @@ fun BillDetailContent(bill: Bill, table: Table) {
                 BillItemRow(item)
             }
         }
-
         Divider()
 
-        // Ghi chú (nếu có)
+        // Optional receipt image
+        bill.receiptImage?.takeIf { it.isNotBlank() }?.let { b64 ->
+            Text(
+                text = "Ảnh hoá đơn",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            val bytes = Base64.decode(b64, Base64.DEFAULT)
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "Hoá đơn",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray),
+                contentScale = ContentScale.Crop
+            )
+            Divider()
+        }
+
+        // Note
         if (bill.note.isNotBlank()) {
             Text(
                 text = "Ghi chú",
@@ -162,7 +183,7 @@ fun BillDetailContent(bill: Bill, table: Table) {
             Divider()
         }
 
-        // Tổng tiền
+        // Discounts & total
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween

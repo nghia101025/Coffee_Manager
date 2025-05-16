@@ -52,7 +52,7 @@ class FoodController {
                         name = name,
                         recipe = recipe,
                         price = price,
-                        isAvailable = avail,
+                        available = avail,
                         imageUrl = url,
                         category = category
                     )

@@ -251,7 +251,7 @@ fun UpdateFoodScreen(
                                 name = name,
                                 recipe = recipe,
                                 price = rawPrice.toLong(),
-                                isAvailable = true,
+                                available = true,
                                 imageUrl = finalImage,
                                 category = selectedCat?.name.orEmpty()
                             )

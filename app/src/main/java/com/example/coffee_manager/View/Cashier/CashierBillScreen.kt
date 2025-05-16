@@ -3,7 +3,6 @@ package com.example.coffee_manager.View.Cashier
 
 import android.graphics.BitmapFactory
 import android.util.Base64
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.coffee_manager.Controller.Cashier.BillController
@@ -98,9 +98,11 @@ fun CashierBillScreen(
                 CircularProgressIndicator(Modifier.align(Alignment.Center))
                 return@Box
             }
+
             message?.let { msg ->
                 Snackbar(Modifier.align(Alignment.BottomCenter)) { Text(msg) }
             }
+
             bill?.let { b ->
                 Column(
                     Modifier
@@ -114,6 +116,8 @@ fun CashierBillScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                     Divider()
+
+                    // Items
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(b.items) { item ->
                             Row(
@@ -126,6 +130,24 @@ fun CashierBillScreen(
                         }
                     }
                     Divider()
+
+                    // Receipt image, if present
+                    b.receiptImage?.takeIf { it.isNotBlank() }?.let { base64 ->
+                        Text("Hoá đơn (ảnh):", style = MaterialTheme.typography.bodyMedium)
+                        val bytes = Base64.decode(base64, Base64.DEFAULT)
+                        val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = "Ảnh hoá đơn",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .padding(vertical = 8.dp)
+                        )
+                        Divider()
+                    }
+
+                    // Totals
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Tạm tính")
                         Text(fmt.format(b.totalPrice) + "₫")

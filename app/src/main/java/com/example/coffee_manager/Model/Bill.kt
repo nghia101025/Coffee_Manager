@@ -22,7 +22,8 @@ data class Bill(
     val totalPrice: Long = 0L,
     val paid: Boolean = false,
     val processed: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val receiptImage: String = ""
 ) {
 
 }

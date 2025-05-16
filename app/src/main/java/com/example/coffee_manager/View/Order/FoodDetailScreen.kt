@@ -19,15 +19,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.coffee_manager.Controller.Order.FoodController
 import com.example.coffee_manager.Controller.Order.BillController
+import com.example.coffee_manager.Controller.Order.FoodController
 import com.example.coffee_manager.Model.Food
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +45,7 @@ fun FoodDetailScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var addingToCart by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Load dữ liệu món
     LaunchedEffect(foodId) {
@@ -68,7 +71,8 @@ fun FoodDetailScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(
             Modifier
@@ -105,44 +109,49 @@ fun FoodDetailScreen(
                                 contentScale = ContentScale.Crop
                             )
                         }
-
                         // Tên & Giá
                         Text(f.name, style = MaterialTheme.typography.titleLarge)
-                        Text("${NumberFormat.getNumberInstance(Locale("vi", "VN")).format(f.price)}₫", style = MaterialTheme.typography.titleMedium)
-
+                        Text(
+                            "${NumberFormat.getNumberInstance(Locale("vi", "VN")).format(f.price)}₫",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         // Category
                         Text("Danh mục: ${f.category}", style = MaterialTheme.typography.bodyMedium)
-
                         // Công thức
                         Text("Công thức:", style = MaterialTheme.typography.titleSmall)
                         Text(f.recipe, style = MaterialTheme.typography.bodySmall)
-
                         // Tình trạng
                         Text(
-                            text = if (f.isAvailable) "Còn hàng" else "Hết hàng",
-                            color = if (f.isAvailable) Color.Green else Color.Red,
+                            text = if (f.available) "Còn hàng" else "Hết hàng",
+                            color = if (f.available) Color.Green else Color.Red,
                             style = MaterialTheme.typography.bodyMedium
                         )
-
                         // Đã bán
                         Text("Đã bán: ${f.soldCount}", style = MaterialTheme.typography.bodySmall)
-
                         Spacer(Modifier.height(24.dp))
 
                         // Nút thêm vào giỏ hàng
                         Button(
                             onClick = {
+                                if (!f.available) {
+                                    // Nếu hết hàng, show snackbar
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Món này đã hết hàng!")
+                                    }
+                                    return@Button
+                                }
                                 addingToCart = true
                                 scope.launch(Dispatchers.IO) {
-                                    // Gọi hàm addToCart(userId, foodId, qty)
                                     billController.addToCart(f.idFood, 1)
                                         .onFailure {
-                                            // xử lý lỗi nếu cần
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Lỗi thêm vào giỏ: ${it.message}")
+                                            }
                                         }
                                     addingToCart = false
                                 }
                             },
-                            enabled = !addingToCart,
+                            enabled = f.available && !addingToCart,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(if (addingToCart) "Đang thêm..." else "Thêm vào giỏ hàng")

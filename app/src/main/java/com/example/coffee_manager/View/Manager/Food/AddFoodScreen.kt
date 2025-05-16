@@ -232,7 +232,7 @@ fun AddFoodScreen(navController: NavController) {
                             name = name,
                             recipe = recipe,
                             price = rawPrice.toLong(),
-                            isAvailable = true,
+                            available = true,
                             imageUrl = imageBitmap!!.toBase64(),
                             category = it.name,
                             soldCount = 0L

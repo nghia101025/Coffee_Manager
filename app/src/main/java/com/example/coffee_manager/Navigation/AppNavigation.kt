@@ -10,7 +10,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.coffee_manager.View.*
-import com.example.coffee_manager.View.Brewing.BrewingScreen
 import com.example.coffee_manager.View.Cashier.CashierBillScreen
 import com.example.coffee_manager.View.Manager.Food.AddFoodScreen
 import com.example.coffee_manager.View.Manager.HomeAdminScreen
@@ -34,7 +33,7 @@ import com.example.coffee_manager.View.Order.BillListScreen
 import com.example.coffee_manager.View.ProfileScreen
 import com.example.coffee_manager.View.Statistics.StatisticsScreen
 import com.example.coffee_manager.View.Statistics.BillDetailScreen
-import com.example.coffee_manager.View.Brewing.BrewingBillDetailScreen
+import com.example.coffee_manager.View.Barista.BaristaScreen
 import com.example.coffee_manager.View.Manager.Promotion.PromotionListScreen
 import com.example.coffee_manager.View.Manager.Qr.QrScreen
 
@@ -48,7 +47,7 @@ fun AppNavigation(navController: NavHostController) {
         // Các màn hình Home theo từng vai trò
         composable("home_admin") { HomeAdminScreen(navController) }
         composable("home_order") { OrderScreen(navController) }
-        composable("home_brewing") { BrewingScreen(navController) }
+        composable("home_brewing") { BaristaScreen(navController) }
 
         // Admin
         composable("add_food") { AddFoodScreen(navController) }
@@ -176,21 +175,6 @@ fun AppNavigation(navController: NavHostController) {
         ) { backStackEntry ->
             val billId = backStackEntry.arguments!!.getString("billId")!!
             FinishSuccessScreen(navController, billId)
-        }
-
-        // Brewing
-        // 2. Chi tiết 1 đơn pha chế
-        composable(
-            route = "brewing_detail/{billId}",
-            arguments = listOf(navArgument("billId") {
-                type = NavType.StringType
-            })
-        ) { backStackEntry ->
-            val billId = backStackEntry.arguments!!.getString("billId")!!
-            BrewingBillDetailScreen(
-                navController = navController,
-                billId = billId
-            )
         }
 
     }
