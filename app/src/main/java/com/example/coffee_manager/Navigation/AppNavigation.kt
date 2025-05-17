@@ -49,6 +49,7 @@ fun AppNavigation(navController: NavHostController) {
         composable("home_order") { OrderScreen(navController) }
         composable("home_brewing") { BaristaScreen(navController) }
 
+
         // Admin
         composable("add_food") { AddFoodScreen(navController) }
         composable("add_employee") { RegisterScreen(navController) }

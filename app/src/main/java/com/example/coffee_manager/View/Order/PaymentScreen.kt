@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.coffee_manager.Controller.Admin.QrController
+import com.example.coffee_manager.Controller.HistoryController
 import com.example.coffee_manager.Controller.Order.*
 import com.example.coffee_manager.Model.*
 import kotlinx.coroutines.launch
@@ -43,7 +44,8 @@ fun PaymentScreen(
     tableController: TableController = remember { TableController() },
     foodController: FoodController = remember { FoodController() },
     promotionController: PromotionController = remember { PromotionController() },
-    qrController: QrController = remember { QrController() }
+    qrController: QrController = remember { QrController() },
+    historyController: HistoryController = remember { HistoryController() }
 ) {
     val fmt = NumberFormat.getNumberInstance(Locale("vi", "VN"))
     var cartItems by remember { mutableStateOf(emptyList<CartItem>()) }
@@ -261,11 +263,12 @@ fun PaymentScreen(
                                     discountPercent = discountPct,
                                     totalPrice = total,
                                     paid = true,
-                                    processed = true,
+                                    processed = false,
                                     createdAt = System.currentTimeMillis()
                                 )
                                 billController.createBill(bill)
                                     .onSuccess { id ->
+                                        historyController.addHistory("Lên đơn #$id")
                                         tableController.updateTableStatus(SessionManager.idTable!!, "OCCUPIED", id)
                                         SessionManager.numberTable = null
                                         billController.clearCart()
@@ -352,6 +355,7 @@ fun PaymentScreen(
                                 )
                                 billController.createBill(bill)
                                     .onSuccess { id ->
+                                        historyController.addHistory("Lên đơn #$id")
                                         tableController.updateTableStatus(SessionManager.idTable!!, "OCCUPIED", id)
                                         SessionManager.numberTable = null
                                         billController.clearCart()
