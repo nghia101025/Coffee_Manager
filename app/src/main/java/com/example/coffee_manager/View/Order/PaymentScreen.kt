@@ -270,7 +270,7 @@ fun PaymentScreen(
                                     .onSuccess { id ->
                                         historyController.addHistory("Lên đơn #$id")
                                         tableController.updateTableStatus(SessionManager.idTable!!, "OCCUPIED", id)
-                                        SessionManager.numberTable = null
+                                        SessionManager.numberTable = 0
                                         billController.clearCart()
                                         navController.navigate("orderSuccess/$id") {
                                             popUpTo("payment") { inclusive = true }
@@ -357,7 +357,7 @@ fun PaymentScreen(
                                     .onSuccess { id ->
                                         historyController.addHistory("Lên đơn #$id")
                                         tableController.updateTableStatus(SessionManager.idTable!!, "OCCUPIED", id)
-                                        SessionManager.numberTable = null
+                                        SessionManager.numberTable = 0
                                         billController.clearCart()
                                         showTransferDialog = false
                                         navController.navigate("orderSuccess/$id") {
