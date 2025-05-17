@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.example.coffee_manager.Controller.HistoryController
 import com.example.coffee_manager.Model.Promotion
 import java.text.SimpleDateFormat
 import java.util.*

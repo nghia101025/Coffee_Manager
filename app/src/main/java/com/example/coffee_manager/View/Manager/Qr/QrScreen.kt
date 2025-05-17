@@ -22,11 +22,13 @@ import com.example.coffee_manager.Controller.Admin.QrController
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import android.provider.MediaStore
+import com.example.coffee_manager.Controller.HistoryController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QrScreen(navController: NavController) {
     val controller = remember { QrController() }
+    val historyController = remember { HistoryController() }
     var base64 by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -46,6 +48,7 @@ fun QrScreen(navController: NavController) {
                         .onSuccess {
                             base64 = b64
                             message = "Upload thành công"
+
                         }
                         .onFailure {
                             message = "Lỗi upload: ${it.message}"
